@@ -8,6 +8,7 @@ async function main() {
 
   // Clean up existing seed data
   await prisma.webhookEvent.deleteMany();
+  await prisma.payment.deleteMany();
   await prisma.subscription.deleteMany();
   await prisma.invoiceItem.deleteMany();
   await prisma.invoice.deleteMany();
@@ -271,11 +272,88 @@ async function main() {
     },
   });
 
+  // ============================================================
+  // TENANT 3: Nombokin Admin (Platform Admin)
+  // ============================================================
+  const tenantAdmin = await prisma.tenant.create({
+    data: {
+      name: "Nombokin Admin",
+      slug: "nombokin-admin",
+      watermarkText: "Dibuat dengan Nombokin",
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      tenantId: tenantAdmin.id,
+      email: "admin@nombokin.com",
+      name: "Admin Nombokin",
+      passwordHash: await bcrypt.hash("password123", 10),
+      role: "ADMIN",
+    },
+  });
+
+  await prisma.subscription.create({
+    data: {
+      tenantId: tenantAdmin.id,
+      tier: "BUSINESS",
+      status: "ACTIVE",
+    },
+  });
+
+  // ============================================================
+  // SAMPLE PAYMENTS (untuk dashboard admin)
+  // ============================================================
+  const rakaUser = await prisma.user.findUnique({ where: { email: "raka@studioraka.id" } });
+  const paidInvoices = await prisma.invoice.findMany({ where: { status: "PAID" } });
+
+  await prisma.payment.createMany({
+    data: [
+      {
+        tenantId: tenantKata.id,
+        type: "SUBSCRIPTION",
+        status: "SUCCESS",
+        orderId: `SUB-PRO-M-${tenantKata.id.slice(0, 8)}-seed0001`,
+        amount: 29000,
+        tier: "PRO",
+        interval: "MONTHLY",
+        transactionId: "seed-trx-0001",
+        description: "Langganan PRO (Bulanan)",
+        createdAt: new Date("2026-07-01"),
+      },
+      {
+        tenantId: tenantKata.id,
+        type: "SUBSCRIPTION",
+        status: "SUCCESS",
+        orderId: `SUB-PRO-Y-${tenantKata.id.slice(0, 8)}-seed0002`,
+        amount: 299000,
+        tier: "PRO",
+        interval: "YEARLY",
+        transactionId: "seed-trx-0002",
+        description: "Langganan PRO (Tahunan)",
+        createdAt: new Date("2026-08-01"),
+      },
+      ...paidInvoices.map((inv, i) => ({
+        tenantId: inv.tenantId,
+        userId: inv.tenantId === tenantRaka.id ? rakaUser?.id ?? undefined : undefined,
+        invoiceId: inv.id,
+        type: "INVOICE" as const,
+        status: "SUCCESS" as const,
+        orderId: `NMB-${inv.number}-seed${i}`,
+        amount: inv.total,
+        transactionId: `seed-trx-inv-${i}`,
+        description: `Pembayaran ${inv.number}`,
+        createdAt: inv.paidAt ?? new Date("2026-07-10"),
+      })),
+    ],
+  });
+
   console.log("✅ Seed selesai!");
   console.log("");
   console.log("👤 Akun test:");
   console.log("   Email: raka@studioraka.id | Password: password123");
   console.log("   Email: maya@agensikata.id | Password: password123");
+  console.log("   Email: admin@nombokin.com | Password: password123 (ADMIN)");
 }
 
 main()

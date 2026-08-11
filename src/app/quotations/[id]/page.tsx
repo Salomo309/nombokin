@@ -235,7 +235,7 @@ export default function QuotationDetailPage() {
               notes={quotation.notes || ""}
               terms={quotation.terms || ""}
               status={quotation.status}
-              isWatermarked={quotation.tenant.subscription.tier === "FREE"}
+              isWatermarked={quotation.tenant.subscription?.tier === "FREE"}
             />
           </div>
 

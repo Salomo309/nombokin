@@ -46,6 +46,26 @@ export async function createPaymentLink(
     },
   });
 
+  // Record pending payment in history
+  await prisma.payment.upsert({
+    where: { orderId },
+    update: {
+      status: "PENDING",
+      amount: total,
+      invoiceId: invoice.id,
+      tenantId: invoice.tenantId,
+    },
+    create: {
+      orderId,
+      tenantId: invoice.tenantId,
+      invoiceId: invoice.id,
+      type: "INVOICE",
+      status: "PENDING",
+      amount: total,
+      description: `Pembayaran ${invoice.number}`,
+    },
+  });
+
   return snapResponse.redirect_url;
 }
 
@@ -56,22 +76,25 @@ export async function processPaymentWebhook(payload: {
   transaction_id: string;
   gross_amount?: string;
 }): Promise<void> {
-  const { order_id, transaction_status, fraud_status, transaction_id } = payload;
+  const { order_id, transaction_status, fraud_status, transaction_id, gross_amount } = payload;
 
   const isPaid = isPaymentSuccessful(transaction_status, fraud_status);
   if (!isPaid) return;
 
   // Handle subscription payments
   if (order_id.startsWith("SUB-")) {
+    // Format: SUB-{tier}-{M|Y}-{tenantId}-{token}
     const parts = order_id.split("-");
-    const tenantId = parts[1];
-    const tier = parts[2] as "PRO" | "BUSINESS";
-    const interval = parts[3] as "MONTHLY" | "YEARLY";
+    const tier = parts[1] as "PRO" | "BUSINESS";
+    const intervalRaw = parts[2];
+    const tenantId = parts[3];
 
-    if (!tenantId || !tier || !interval) {
+    if (!tenantId || !tier || !intervalRaw) {
       console.warn(`[Payment Webhook] Invalid subscription order_id format: ${order_id}`);
       return;
     }
+
+    const interval = intervalRaw === "Y" ? "YEARLY" : "MONTHLY";
 
     const durationDays = interval === "MONTHLY" ? 30 : 365;
     const currentPeriodEnd = new Date();
@@ -94,6 +117,26 @@ export async function processPaymentWebhook(payload: {
       },
     });
 
+    // Record successful subscription payment
+    await prisma.payment.upsert({
+      where: { orderId: order_id },
+      update: {
+        status: "SUCCESS",
+        transactionId: transaction_id,
+      },
+      create: {
+        orderId: order_id,
+        tenantId,
+        type: "SUBSCRIPTION",
+        status: "SUCCESS",
+        amount: parseFloat(gross_amount ?? "0") || 0,
+        tier,
+        interval,
+        transactionId: transaction_id,
+        description: `Langganan ${tier} (${interval})`,
+      },
+    });
+
     console.log(`[Payment Webhook] Tenant ${tenantId} upgraded to ${tier} (${interval}) until ${currentPeriodEnd.toISOString()}`);
     return;
   }
@@ -108,6 +151,26 @@ export async function processPaymentWebhook(payload: {
     console.warn(`[Payment] Invoice not found for order_id: ${order_id}`);
     return;
   }
+
+  // Record successful invoice payment
+  await prisma.payment.upsert({
+    where: { orderId: order_id },
+    update: {
+      status: "SUCCESS",
+      transactionId: transaction_id,
+      amount: parseFloat(invoice.total.toString()),
+    },
+    create: {
+      orderId: order_id,
+      tenantId: invoice.tenantId,
+      invoiceId: invoice.id,
+      type: "INVOICE",
+      status: "SUCCESS",
+      amount: parseFloat(invoice.total.toString()),
+      transactionId: transaction_id,
+      description: `Pembayaran ${invoice.number}`,
+    },
+  });
 
   if (invoice.status === "PAID") {
     console.log(`[Payment] Invoice ${invoice.number} already paid — skipping`);

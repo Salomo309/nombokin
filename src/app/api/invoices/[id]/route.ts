@@ -15,7 +15,11 @@ export async function GET(
 
   const invoice = await prisma.invoice.findFirst({
     where: { id, tenantId: auth.tenantId, isDeleted: false },
-    include: { customer: true, items: { orderBy: { sortOrder: "asc" } }, tenant: true },
+    include: {
+      customer: true,
+      items: { orderBy: { sortOrder: "asc" } },
+      tenant: { include: { subscription: true } },
+    },
   });
 
   if (!invoice) return NextResponse.json({ error: "Invoice tidak ditemukan" }, { status: 404 });

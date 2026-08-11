@@ -6,7 +6,9 @@ const PROTECTED_PATHS = [
   "/invoices",
   "/quotations",
   "/customers",
+  "/payments",
   "/settings",
+  "/admin",
 ];
 
 const AUTH_PATHS = ["/login", "/register"];

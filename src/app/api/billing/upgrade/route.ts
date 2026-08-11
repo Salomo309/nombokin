@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthFromRequest } from "@/lib/auth";
-import { createSnapTransaction } from "@/lib/midtrans";
+import { createSnapTransaction, IS_PRODUCTION, MIDTRANS_CLIENT_KEY } from "@/lib/midtrans";
+import { generateShareToken } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
@@ -25,7 +26,12 @@ export async function POST(request: NextRequest) {
       price = interval === "MONTHLY" ? 59000 : 599000; // Let's set Business yearly to 599000
     }
 
-    const orderId = `SUB-${auth.tenantId}-${tier}-${interval}-${Date.now()}`;
+    // Midtrans order_id max 50 chars — keep it short and unique.
+    // Format: SUB-{tier}-{M|Y}-{tenantId}-{token}
+    const intervalShort = interval === "MONTHLY" ? "M" : "Y";
+    const orderId = `SUB-${tier}-${intervalShort}-${auth.tenantId}-${generateShareToken()
+      .replace(/[-_]/g, "")
+      .slice(0, 8)}`;
 
     // Get current user email for customer details
     const user = await prisma.user.findUnique({
@@ -49,9 +55,29 @@ export async function POST(request: NextRequest) {
       ],
     });
 
+    // Record pending subscription payment in history
+    await prisma.payment.create({
+      data: {
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        orderId,
+        type: "SUBSCRIPTION",
+        status: "PENDING",
+        amount: price,
+        tier,
+        interval,
+        description: `Langganan ${tier} (${interval === "MONTHLY" ? "Bulanan" : "Tahunan"})`,
+      },
+    });
+
+    const snapHost = IS_PRODUCTION ? "https://app.midtrans.com" : "https://app.sandbox.midtrans.com";
+
     return NextResponse.json({
       token: snapResponse.token,
       redirectUrl: snapResponse.redirect_url,
+      orderId,
+      snapScriptUrl: `${snapHost}/snap/snap.js`,
+      clientKey: MIDTRANS_CLIENT_KEY,
     });
   } catch (err) {
     console.error("[BillingUpgrade/POST]", err);

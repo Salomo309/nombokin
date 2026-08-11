@@ -270,7 +270,7 @@ export default function InvoiceDetailPage() {
               notes={invoice.notes || ""}
               terms={invoice.terms || ""}
               status={invoice.status}
-              isWatermarked={invoice.tenant.subscription.tier === "FREE"}
+              isWatermarked={invoice.tenant.subscription?.tier === "FREE"}
             />
           </div>
 

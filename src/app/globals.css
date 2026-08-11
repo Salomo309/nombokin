@@ -151,3 +151,38 @@ h1, h2, h3, h4, h5, h6 {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
+
+/* Editorial ledger grid background */
+.ledger-grid {
+  background-image:
+    linear-gradient(to right, hsl(var(--border) / 0.55) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--border) / 0.55) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* Dashed perforation edge for receipt blocks */
+.perforated {
+  background-image: linear-gradient(to bottom, hsl(var(--border) / 0.8) 50%, transparent 50%);
+  background-size: 2px 6px;
+  background-repeat: repeat-y;
+}
+
+/* Payment channels marquee */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 32s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+}

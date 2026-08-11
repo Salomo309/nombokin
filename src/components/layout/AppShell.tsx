@@ -89,7 +89,9 @@ export function AppShell({ children }: AppShellProps) {
 
   // Derive topbar title from active route path
   let activeTitle = "";
-  if (pathname.startsWith("/dashboard")) activeTitle = "Dashboard";
+  if (pathname.startsWith("/admin")) activeTitle = "Dashboard Admin";
+  else if (pathname.startsWith("/payments")) activeTitle = "Riwayat Pembayaran";
+  else if (pathname.startsWith("/dashboard")) activeTitle = "Dashboard";
   else if (pathname.startsWith("/invoices/new")) activeTitle = "Buat Invoice Baru";
   else if (pathname.startsWith("/invoices") && pathname.includes("/edit")) activeTitle = "Edit Invoice";
   else if (pathname.startsWith("/invoices")) activeTitle = "Daftar Invoice";
@@ -105,6 +107,7 @@ export function AppShell({ children }: AppShellProps) {
       <Sidebar
         tenantName={session.tenant.name}
         tier={session.tenant.subscription.tier}
+        role={session.role}
         className="hidden md:flex shrink-0"
       />
 
@@ -120,6 +123,7 @@ export function AppShell({ children }: AppShellProps) {
       <Sidebar
         tenantName={session.tenant.name}
         tier={session.tenant.subscription.tier}
+        role={session.role}
         onClose={() => setSidebarOpen(false)}
         className={cn(
           "fixed bottom-0 top-0 left-0 z-50 md:hidden transition-transform duration-300 ease-in-out shrink-0",

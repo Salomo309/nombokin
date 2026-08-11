@@ -340,45 +340,32 @@ export function generateInvoicePDF(
       color: PDF_COLORS.inkDark,
       lineHeight: 1.4,
     },
-    background: options.isWatermarked
-      ? [
+    background: [
+      {
+        canvas: [
           {
-            canvas: [
-              {
-                type: "rect",
-                x: 0,
-                y: 0,
-                w: 595,
-                h: 842,
-                color: "#FAF7F2",
-              },
-            ],
-          },
-          {
-            // Watermark text rotated diagonally
-            text: "DIBUAT DENGAN NOMBOKIN",
-            fontSize: 36,
-            bold: true,
-            color: "#E7E5E4",
-            opacity: 0.5,
-            angle: -45,
-            absolutePosition: { x: 80, y: 380 },
-          } as any,
-        ]
-      : [
-          {
-            canvas: [
-              {
-                type: "rect",
-                x: 0,
-                y: 0,
-                w: 595,
-                h: 842,
-                color: "#FAF7F2",
-              },
-            ],
+            type: "rect",
+            x: 0,
+            y: 0,
+            w: 595,
+            h: 842,
+            color: "#FAF7F2",
           },
         ],
+      },
+    ],
+    ...(options.isWatermarked
+      ? {
+          watermark: {
+            text: "DIBUAT DENGAN NOMBOKIN",
+            color: "#1C1917",
+            opacity: 0.06,
+            angle: 315,
+            fontSize: 40,
+            bold: true,
+          },
+        }
+      : {}),
     content: [
       ...headerContent,
       metaContent,
@@ -471,18 +458,27 @@ export async function generateInvoicePDFBuffer(
       },
     ];
 
-    const backgroundLayers: any[] = options.isWatermarked
-      ? [
-          { canvas: [{ type: "rect", x: 0, y: 0, w: 595, h: 842, color: "#FAF7F2" }] },
-          { text: "DIBUAT DENGAN NOMBOKIN", fontSize: 36, bold: true, color: "#E7E5E4", opacity: 0.5, angle: -45, absolutePosition: { x: 80, y: 380 } },
-        ]
-      : [{ canvas: [{ type: "rect", x: 0, y: 0, w: 595, h: 842, color: "#FAF7F2" }] }];
+    const backgroundLayers: any[] = [
+      { canvas: [{ type: "rect", x: 0, y: 0, w: 595, h: 842, color: "#FAF7F2" }] },
+    ];
 
     const docDefinition: TDocumentDefinitions = {
       pageSize: "A4",
       pageMargins: [48, 48, 48, 48],
       defaultStyle: { font: "Roboto", fontSize: 10, color: PDF_COLORS.inkDark, lineHeight: 1.4 },
       background: backgroundLayers,
+      ...(options.isWatermarked
+        ? {
+            watermark: {
+              text: "DIBUAT DENGAN NOMBOKIN",
+              color: "#1C1917",
+              opacity: 0.06,
+              angle: 315,
+              fontSize: 40,
+              bold: true,
+            },
+          }
+        : {}),
       content: [
         // Header
         {

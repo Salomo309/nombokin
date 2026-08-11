@@ -11,6 +11,8 @@ import {
   LogOut,
   X,
   CreditCard,
+  Receipt,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/shared/Logo";
@@ -19,11 +21,12 @@ import { Button } from "@/components/ui/button";
 interface SidebarProps {
   tenantName: string;
   tier: string;
+  role?: string;
   onClose?: () => void;
   className?: string;
 }
 
-export function Sidebar({ tenantName, tier, onClose, className }: SidebarProps) {
+export function Sidebar({ tenantName, tier, role, onClose, className }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -61,11 +64,24 @@ export function Sidebar({ tenantName, tier, onClose, className }: SidebarProps) 
       icon: Users,
     },
     {
+      label: "Pembayaran",
+      href: "/payments",
+      icon: Receipt,
+    },
+    {
       label: "Pengaturan",
       href: "/settings",
       icon: Settings,
     },
   ];
+
+  if (role === "ADMIN") {
+    navItems.push({
+      label: "Admin",
+      href: "/admin",
+      icon: ShieldCheck,
+    });
+  }
 
   return (
     <div

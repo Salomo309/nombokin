@@ -17,6 +17,7 @@ datasource db {
 enum UserRole {
   OWNER
   MEMBER
+  ADMIN
 }
 
 enum InvoiceType {
@@ -50,6 +51,18 @@ enum WebhookProvider {
   MIDTRANS
 }
 
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  CANCELLED
+  FAILED
+}
+
+enum PaymentType {
+  SUBSCRIPTION
+  INVOICE
+}
+
 // ============================================================
 // MODELS
 // ============================================================
@@ -68,6 +81,7 @@ model Tenant {
   customers     Customer[]
   invoices      Invoice[]
   subscription  Subscription?
+  payments      Payment[]
 
   @@index([slug])
 }
@@ -85,6 +99,8 @@ model User {
   updatedAt    DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  payments Payment[]
 
   @@index([tenantId])
   @@index([email])
@@ -134,6 +150,7 @@ model Invoice {
   tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items    InvoiceItem[]
+  payments Payment[]
 
   @@unique([tenantId, number])
   @@index([tenantId])
@@ -180,4 +197,31 @@ model WebhookEvent {
   processedAt DateTime        @default(now())
 
   @@index([provider, eventId])
+}
+
+model Payment {
+  id            String            @id @default(cuid())
+  tenantId      String
+  userId        String?
+  invoiceId     String?
+  orderId       String            @unique
+  type          PaymentType       @default(SUBSCRIPTION)
+  status        PaymentStatus     @default(PENDING)
+  amount        Decimal           @db.Decimal(15, 2)
+  tier          SubscriptionTier?
+  interval      String?
+  transactionId String?
+  paymentMethod String?
+  description   String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }

@@ -39,30 +39,114 @@ function SettingsContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
 
-  useEffect(() => {
-    async function loadSettings() {
-      try {
-        const res = await fetch("/api/auth/me");
-        if (res.ok) {
-          const data = await res.json();
-          setUserName(data.name);
-          setUserEmail(data.email);
-          setTenantName(data.tenant.name);
-          setLogoUrl(data.tenant.logoUrl);
-          setLetterheadSignature(data.tenant.letterheadSignature || "");
-          setWatermarkText(data.tenant.watermarkText || "Dibuat dengan Nombokin");
-          setTier(data.tenant.subscription.tier);
-          setSubStatus(data.tenant.subscription.status);
-          setPeriodEnd(data.tenant.subscription.currentPeriodEnd);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+  async function loadSettings(): Promise<string | undefined> {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        setUserName(data.name);
+        setUserEmail(data.email);
+        setTenantName(data.tenant.name);
+        setLogoUrl(data.tenant.logoUrl);
+        setLetterheadSignature(data.tenant.letterheadSignature || "");
+        setWatermarkText(data.tenant.watermarkText || "Dibuat dengan Nombokin");
+        setTier(data.tenant.subscription.tier);
+        setSubStatus(data.tenant.subscription.status);
+        setPeriodEnd(data.tenant.subscription.currentPeriodEnd);
+        return data.tenant.subscription.tier as string;
       }
+    } catch (err) {
+      console.error(err);
     }
-    loadSettings();
+  }
+
+  useEffect(() => {
+    (async () => {
+      await loadSettings();
+      setLoading(false);
+    })();
   }, []);
+
+  function loadSnapScript(snapScriptUrl: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const anyWindow = window as any;
+      if (anyWindow.snap) {
+        resolve();
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = snapScriptUrl;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Gagal memuat Midtrans Snap"));
+      document.body.appendChild(script);
+    });
+  }
+
+  const handleUpgrade = async (selectedTier: "PRO" | "BUSINESS") => {
+    setSaving(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      const res = await fetch("/api/billing/upgrade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier: selectedTier, interval: billingInterval }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        setErrorMsg(err.error || "Gagal mengupgrade langganan");
+        return;
+      }
+
+      const data = await res.json();
+      await loadSnapScript(
+        `${data.snapScriptUrl}?client_key=${encodeURIComponent(data.clientKey)}`
+      );
+
+      (window as any).snap.pay(data.token, {
+        onSuccess: async () => {
+          setSuccessMsg("Pembayaran berhasil diproses. Menunggu konfirmasi Midtrans...");
+          // Webhook memverifikasi & memperbarui status langganan, cek beberapa kali
+          let currentTier = "FREE";
+          for (let i = 0; i < 6; i++) {
+            await new Promise((r) => setTimeout(r, 5000));
+            currentTier = (await loadSettings()) ?? currentTier;
+            if (currentTier !== "FREE") break;
+          }
+          if (currentTier !== "FREE") {
+            setSuccessMsg("Pembayaran berhasil! Paket Anda telah diaktifkan.");
+          } else {
+            setSuccessMsg("Pembayaran berhasil. Status langganan akan terverifikasi otomatis.");
+          }
+        },
+        onPending: () => {
+          setSuccessMsg("Pembayaran menunggu konfirmasi. Status akan diperbarui otomatis.");
+        },
+        onError: () => {
+          setErrorMsg("Pembayaran gagal diproses. Silakan coba lagi.");
+        },
+        onClose: async () => {
+          try {
+            await fetch("/api/billing/subscription/cancel", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ orderId: data.orderId }),
+            });
+          } catch (err) {
+            console.error("Gagal membatalkan transaksi:", err);
+          }
+          setErrorMsg("Pembayaran dibatalkan. Silakan coba lagi kapan saja.");
+        },
+      });
+    } catch (err) {
+      console.error(err);
+      setErrorMsg("Koneksi gagal");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,33 +214,6 @@ function SettingsContent() {
       setErrorMsg("Gagal mengunggah logo");
     } finally {
       setLogoUploading(false);
-    }
-  };
-
-  const handleUpgrade = async (selectedTier: "PRO" | "BUSINESS") => {
-    setSaving(true);
-    setErrorMsg(null);
-
-    try {
-      const res = await fetch("/api/billing/upgrade", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier: selectedTier, interval: billingInterval }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        // Redirect to Midtrans Snap upgrade screen
-        window.location.href = data.redirectUrl;
-      } else {
-        const err = await res.json();
-        setErrorMsg(err.error || "Gagal mengupgrade langganan");
-      }
-    } catch (err) {
-      console.error(err);
-      setErrorMsg("Koneksi gagal");
-    } finally {
-      setSaving(false);
     }
   };
 
