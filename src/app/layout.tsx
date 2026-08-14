@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Fraunces } from "next/font/google";
+import { UIProviders } from "@/components/ui/ui-providers";
 import "./globals.css";
 
 const inter = Inter({
@@ -28,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${inter.variable} ${fraunces.variable}`} suppressHydrationWarning>
       <body className="antialiased min-h-screen flex flex-col selection:bg-accent selection:text-accent-foreground">
-        {children}
+        <UIProviders>{children}</UIProviders>
       </body>
     </html>
   );

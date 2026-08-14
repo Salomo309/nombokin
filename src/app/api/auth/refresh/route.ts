@@ -11,13 +11,13 @@ import {
 export async function POST(request: NextRequest) {
   const token = request.cookies.get(REFRESH_COOKIE)?.value;
   if (!token) {
-    return NextResponse.json({ error: "Refresh token tidak ditemukan" }, { status: 401 });
+    return NextResponse.json({ error: "Refresh token not found" }, { status: 401 });
   }
 
   try {
     const payload = await verifyRefreshToken(token);
     if (!payload) {
-      return NextResponse.json({ error: "Refresh token tidak valid atau kedaluwarsa" }, { status: 401 });
+      return NextResponse.json({ error: "Refresh token is invalid or expired" }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user || user.refreshToken !== token) {
-      return NextResponse.json({ error: "Sesi tidak valid" }, { status: 401 });
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
     // Buat token baru
@@ -53,6 +53,6 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (err) {
     console.error("[Auth/Refresh]", err);
-    return NextResponse.json({ error: "Gagal menyegarkan sesi" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to refresh session" }, { status: 500 });
   }
 }

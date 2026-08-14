@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const transactionId = payload.transaction_id;
 
     if (!orderId || !statusCode || !grossAmount || !signatureKey || !transactionId) {
-      return NextResponse.json({ error: "Payload tidak lengkap" }, { status: 400 });
+      return NextResponse.json({ error: "Incomplete payload" }, { status: 400 });
     }
 
     // 1. Verifikasi tanda tangan Midtrans
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     if (!isValidSignature) {
       console.warn(`[Midtrans Webhook] Tanda tangan tidak valid untuk order: ${orderId}`);
-      return NextResponse.json({ error: "Tanda tangan tidak valid" }, { status: 401 });
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     // 2. Cek idempotensi menggunakan WebhookEvent table
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     if (existingEvent) {
       console.log(`[Midtrans Webhook] Event ID ${transactionId} sudah diproses (Idempotent)`);
-      return NextResponse.json({ message: "Sudah diproses" }, { status: 200 });
+      return NextResponse.json({ message: "Already processed" }, { status: 200 });
     }
 
     // Simpan event ke database untuk mencegah double-processing
@@ -58,9 +58,9 @@ export async function POST(request: NextRequest) {
       gross_amount: grossAmount,
     });
 
-    return NextResponse.json({ success: true, message: "Webhook berhasil diproses" }, { status: 200 });
+    return NextResponse.json({ success: true, message: "Webhook processed successfully" }, { status: 200 });
   } catch (err) {
     console.error("[Midtrans Webhook Error]", err);
-    return NextResponse.json({ error: "Terjadi kesalahan server" }, { status: 500 });
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

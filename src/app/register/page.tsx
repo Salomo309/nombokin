@@ -3,11 +3,12 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { KeyRound, Mail, User, Building, AlertCircle } from "lucide-react";
+import { KeyRound, Mail, User, Building, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Logo } from "@/components/shared/Logo";
+import { GoogleButton } from "@/components/auth/GoogleButton";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -26,13 +27,13 @@ export default function RegisterPage() {
 
     // Validation
     if (!name || !email || !password || !tenantName) {
-      setError("Semua kolom wajib diisi");
+      setError("All fields are required");
       setLoading(false);
       return;
     }
 
     if (password.length < 8) {
-      setError("Password minimal 8 karakter");
+      setError("Password must be at least 8 characters");
       setLoading(false);
       return;
     }
@@ -49,11 +50,11 @@ export default function RegisterPage() {
         router.refresh();
       } else {
         const data = await res.json();
-        setError(data.error || "Gagal mendaftar. Silakan periksa kembali data Anda.");
+        setError(data.error || "Registration failed. Please check your data.");
       }
     } catch (err) {
       console.error(err);
-      setError("Terjadi kesalahan koneksi server.");
+      setError("Server connection error.");
     } finally {
       setLoading(false);
     }
@@ -86,6 +87,16 @@ export default function RegisterPage() {
                 <span>{error}</span>
               </div>
             )}
+
+            <GoogleButton />
+
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-[11px] font-medium text-muted-foreground uppercase">
+                atau daftar dengan email
+              </span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">

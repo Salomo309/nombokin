@@ -24,10 +24,12 @@ export async function checkInvoiceLimit(tenantId: string): Promise<{
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
 
+  // Hitung semua invoice yang DIBUAT bulan ini (termasuk yang dihapus),
+  // agar penghapusan tidak bisa dipakai untuk melampaui kuota bulanan.
   const count = await prisma.invoice.count({
     where: {
       tenantId,
-      isDeleted: false,
+      type: "INVOICE",
       createdAt: { gte: startOfMonth },
     },
   });
@@ -69,6 +71,13 @@ export async function createInvoice(
   tenantId: string,
   input: InvoiceInput & { type: InvoiceType }
 ) {
+  if (input.type === "INVOICE") {
+    const limitCheck = await checkInvoiceLimit(tenantId);
+    if (!limitCheck.allowed) {
+      throw new Error("Free invoice limit reached");
+    }
+  }
+
   const seq = await getNextSequenceNumber(tenantId);
   const number = generateInvoiceNumber(input.type, seq);
   const shareToken = generateShareToken();
@@ -141,9 +150,9 @@ export async function updateInvoice(
     where: { id: invoiceId, tenantId, isDeleted: false },
   });
 
-  if (!existing) throw new Error("Invoice tidak ditemukan");
+  if (!existing) throw new Error("Invoice not found");
   if (existing.status !== "DRAFT")
-    throw new Error("Invoice yang sudah dikirim atau lunas tidak dapat diedit");
+    throw new Error("Sent or paid invoices cannot be edited");
 
   const subtotal = input.items.reduce(
     (sum, item) => sum + item.qty * item.unitPrice,
@@ -193,13 +202,37 @@ export async function softDeleteInvoice(
   const invoice = await prisma.invoice.findFirst({
     where: { id: invoiceId, tenantId, isDeleted: false },
   });
-  if (!invoice) throw new Error("Invoice tidak ditemukan");
+  if (!invoice) throw new Error("Invoice not found");
   if (invoice.status === "PAID")
-    throw new Error("Invoice yang sudah lunas tidak dapat dihapus");
+    throw new Error("Paid invoices cannot be deleted");
 
   await prisma.invoice.update({
     where: { id: invoiceId },
     data: { isDeleted: true },
+  });
+}
+
+// ---- Manually update status ----
+export async function updateInvoiceStatus(
+  invoiceId: string,
+  tenantId: string,
+  status: InvoiceStatus
+): Promise<void> {
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: invoiceId, tenantId, isDeleted: false },
+  });
+  if (!invoice) throw new Error("Invoice not found");
+
+  let paidAt = invoice.paidAt;
+  if (status === "PAID" && !paidAt) {
+    paidAt = new Date();
+  } else if (status !== "PAID" && invoice.status === "PAID") {
+    paidAt = null;
+  }
+
+  await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: { status, paidAt },
   });
 }
 
@@ -224,7 +257,12 @@ export async function convertQuotationToInvoice(
     include: { items: true },
   });
 
-  if (!quotation) throw new Error("Penawaran tidak ditemukan");
+  if (!quotation) throw new Error("Quotation not found");
+
+  const limitCheck = await checkInvoiceLimit(tenantId);
+  if (!limitCheck.allowed) {
+    throw new Error("Free invoice limit reached");
+  }
 
   const seq = await getNextSequenceNumber(tenantId);
   const number = generateInvoiceNumber("INVOICE", seq);

@@ -5,28 +5,41 @@ import { z } from "zod";
 // ============================================================
 
 export const registerSchema = z.object({
-  name: z.string().min(2, "Nama minimal 2 karakter"),
-  email: z.string().email("Email tidak valid"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email"),
   password: z
     .string()
-    .min(8, "Password minimal 8 karakter")
-    .max(72, "Password terlalu panjang"),
-  tenantName: z.string().min(2, "Nama bisnis minimal 2 karakter"),
+    .min(8, "Password must be at least 8 characters")
+    .max(72, "Password is too long"),
+  tenantName: z.string().min(2, "Business name must be at least 2 characters"),
 });
 
 export const loginSchema = z.object({
-  email: z.string().email("Email tidak valid"),
-  password: z.string().min(1, "Password wajib diisi"),
+  email: z.string().email("Invalid email"),
+  password: z.string().min(1, "Password is required"),
 });
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword: z
+      .string()
+      .min(8, "New password must be at least 8 characters")
+      .max(72, "Password is too long"),
+    confirmPassword: z.string().min(1, "Password confirmation is required"),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: "Password confirmation does not match",
+    path: ["confirmPassword"],
+  });
 
 // ============================================================
 // CUSTOMER
 // ============================================================
-
 export const customerSchema = z.object({
-  name: z.string().min(1, "Nama pelanggan wajib diisi"),
+  name: z.string().min(1, "Customer name is required"),
   company: z.string().optional(),
-  email: z.string().email("Email tidak valid").optional().or(z.literal("")),
+  email: z.string().email("Invalid email").optional().or(z.literal("")),
   whatsapp: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -34,14 +47,26 @@ export const customerSchema = z.object({
 export type CustomerInput = z.infer<typeof customerSchema>;
 
 // ============================================================
+// PRODUCT
+// ============================================================
+
+export const productSchema = z.object({
+  name: z.string().min(1, "Product name is required"),
+  description: z.string().optional(),
+  unitPrice: z.coerce.number().min(0, "Price cannot be negative"),
+});
+
+export type ProductInput = z.infer<typeof productSchema>;
+
+// ============================================================
 // INVOICE ITEM
 // ============================================================
 
 export const invoiceItemSchema = z.object({
   id: z.string().optional(),
-  description: z.string().min(1, "Deskripsi item wajib diisi"),
-  qty: z.coerce.number().min(0.01, "Qty minimal 0.01"),
-  unitPrice: z.coerce.number().min(0, "Harga tidak boleh negatif"),
+  description: z.string().min(1, "Item description is required"),
+  qty: z.coerce.number().min(0.01, "Quantity must be at least 0.01"),
+  unitPrice: z.coerce.number().min(0, "Price cannot be negative"),
 });
 
 export type InvoiceItemInput = z.infer<typeof invoiceItemSchema>;
@@ -59,12 +84,12 @@ export const invoiceSchema = z.object({
   customerEmail: z.string().email().optional().or(z.literal("")),
   customerWhatsapp: z.string().optional(),
 
-  issueDate: z.string().min(1, "Tanggal invoice wajib diisi"),
-  dueDate: z.string().min(1, "Tanggal jatuh tempo wajib diisi"),
+  issueDate: z.string().min(1, "Invoice date is required"),
+  dueDate: z.string().min(1, "Due date is required"),
 
   items: z
     .array(invoiceItemSchema)
-    .min(1, "Minimal 1 item diperlukan"),
+    .min(1, "At least 1 item is required"),
 
   discountPercent: z.coerce
     .number()
@@ -83,12 +108,12 @@ export type InvoiceInput = z.infer<typeof invoiceSchema>;
 // ============================================================
 
 export const profileSettingsSchema = z.object({
-  name: z.string().min(2, "Nama minimal 2 karakter"),
-  email: z.string().email("Email tidak valid"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email"),
 });
 
 export const companySettingsSchema = z.object({
-  tenantName: z.string().min(2, "Nama bisnis minimal 2 karakter"),
+  tenantName: z.string().min(2, "Business name must be at least 2 characters"),
   letterheadSignature: z.string().optional(),
 });
 

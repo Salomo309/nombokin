@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { PDFPreview } from "@/components/invoices/PDFPreview";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { formatRupiah } from "@/lib/utils";
 
 interface Customer {
   id: string;
@@ -20,11 +21,20 @@ interface Customer {
   whatsapp?: string | null;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  description?: string | null;
+  unitPrice: string | number;
+  active: boolean;
+}
+
 interface InvoiceItem {
   id?: string;
   description: string;
   qty: number;
   unitPrice: number;
+  productId?: string;
 }
 
 interface InvoiceFormProps {
@@ -48,6 +58,7 @@ export function InvoiceForm({ type, initialData }: InvoiceFormProps) {
 
   // Load existing customers
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>(
     initialData?.customerId || "NEW"
   );
@@ -95,18 +106,23 @@ export function InvoiceForm({ type, initialData }: InvoiceFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
 
-  // Fetch customers & tenant info
+  // Fetch customers, products & tenant info
   useEffect(() => {
     async function loadData() {
       try {
-        const [custRes, meRes] = await Promise.all([
+        const [custRes, prodRes, meRes] = await Promise.all([
           fetch("/api/customers"),
+          fetch("/api/products"),
           fetch("/api/auth/me"),
         ]);
         
         if (custRes.ok) {
           const custData = await custRes.json();
           setCustomers(custData);
+        }
+        if (prodRes.ok) {
+          const prodData = await prodRes.json();
+          setProducts(prodData);
         }
         if (meRes.ok) {
           const meData = await meRes.json();
@@ -120,6 +136,21 @@ export function InvoiceForm({ type, initialData }: InvoiceFormProps) {
     }
     loadData();
   }, []);
+
+  // Auto-match existing line items to products saat mengedit
+  useEffect(() => {
+    if (!initialData || products.length === 0) return;
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.productId) return item;
+        const match = products.find(
+          (p) => p.active && p.name === item.description
+        );
+        return match ? { ...item, productId: match.id } : item;
+      })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products]);
 
   // Update inline customer preview when selecting existing customer
   const activeCustomer = customers.find((c) => c.id === selectedCustomerId);
@@ -147,6 +178,29 @@ export function InvoiceForm({ type, initialData }: InvoiceFormProps) {
       ...updated[index],
       [field]: value,
     };
+    if (field === "description" || field === "unitPrice") {
+      updated[index].productId = undefined;
+    }
+    setItems(updated);
+  };
+
+  const handlePickProduct = (index: number, productId: string) => {
+    const updated = [...items];
+    if (productId === "manual") {
+      updated[index] = { ...updated[index], productId: undefined };
+    } else {
+      const product = products.find((p) => p.id === productId);
+      if (product) {
+        updated[index] = {
+          ...updated[index],
+          productId: product.id,
+          description: product.description
+            ? `${product.name} — ${product.description}`
+            : product.name,
+          unitPrice: Number(product.unitPrice),
+        };
+      }
+    }
     setItems(updated);
   };
 
@@ -157,12 +211,12 @@ export function InvoiceForm({ type, initialData }: InvoiceFormProps) {
 
     // Basic validation
     if (selectedCustomerId === "NEW" && !customerName) {
-      setError("Nama pelanggan wajib diisi");
+      setError("Customer name is required");
       setSaving(false);
       return;
     }
     if (items.some((item) => !item.description || item.qty <= 0 || item.unitPrice < 0)) {
-      setError("Semua baris item wajib diisi dengan jumlah & harga yang benar");
+      setError("All item rows must be filled with valid quantity & price");
       setSaving(false);
       return;
     }
@@ -204,12 +258,12 @@ export function InvoiceForm({ type, initialData }: InvoiceFormProps) {
         if (errorData.code === "LIMIT_EXCEEDED") {
           setShowLimitModal(true);
         } else {
-          setError(errorData.error || "Gagal menyimpan invoice");
+          setError(errorData.error || "Failed to save invoice");
         }
       }
     } catch (err) {
       console.error(err);
-      setError("Terjadi kesalahan koneksi server");
+      setError("Server connection error");
     } finally {
       setSaving(false);
     }
@@ -366,7 +420,25 @@ export function InvoiceForm({ type, initialData }: InvoiceFormProps) {
                     key={index}
                     className="flex flex-col gap-3 rounded-lg border border-border/50 p-3 sm:flex-row sm:items-center sm:gap-4"
                   >
-                    <div className="flex-1 space-y-1">
+                    <div className="flex-1 space-y-2">
+                      <Select
+                        value={item.productId || "manual"}
+                        onValueChange={(val) => handlePickProduct(index, val)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Pilih produk..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="manual">Manual (isi sendiri)</SelectItem>
+                          {products
+                            .filter((p) => p.active)
+                            .map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.name} — {formatRupiah(p.unitPrice)}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                       <Input
                         placeholder="Deskripsi jasa atau barang..."
                         value={item.description}

@@ -2,6 +2,14 @@ import { prisma } from "@/lib/prisma";
 import { createSnapTransaction, isPaymentSuccessful } from "@/lib/midtrans";
 import { generateShareToken } from "@/lib/utils";
 import { sendPaymentConfirmationEmail } from "@/lib/resend";
+import { redisDel } from "@/server/redis";
+
+async function invalidatePaymentCaches(tenantId: string): Promise<void> {
+  await Promise.all([
+    redisDel(`nombokin:payments:${tenantId}`),
+    redisDel("nombokin:admin:dashboard"),
+  ]);
+}
 
 export async function createPaymentLink(
   invoiceId: string,
@@ -13,9 +21,9 @@ export async function createPaymentLink(
     include: { customer: true, items: true, tenant: true },
   });
 
-  if (!invoice) throw new Error("Invoice tidak ditemukan");
-  if (invoice.status === "PAID") throw new Error("Invoice sudah lunas");
-  if (invoice.status === "CANCELLED") throw new Error("Invoice dibatalkan");
+  if (!invoice) throw new Error("Invoice not found");
+  if (invoice.status === "PAID") throw new Error("Invoice is already paid");
+  if (invoice.status === "CANCELLED") throw new Error("Invoice is cancelled");
 
   // Generate unique order ID if not set
   const orderId =
@@ -138,6 +146,7 @@ export async function processPaymentWebhook(payload: {
     });
 
     console.log(`[Payment Webhook] Tenant ${tenantId} upgraded to ${tier} (${interval}) until ${currentPeriodEnd.toISOString()}`);
+    await invalidatePaymentCaches(tenantId);
     return;
   }
 
@@ -187,6 +196,7 @@ export async function processPaymentWebhook(payload: {
   });
 
   console.log(`[Payment] Invoice ${invoice.number} marked as PAID`);
+  await invalidatePaymentCaches(invoice.tenantId);
 
   // Send confirmation email
   if (invoice.customer?.email) {

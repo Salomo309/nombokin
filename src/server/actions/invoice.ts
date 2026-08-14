@@ -8,6 +8,7 @@ import {
   softDeleteInvoice,
   convertQuotationToInvoice,
   getNextSequenceNumber,
+  checkInvoiceLimit,
 } from "@/server/services/invoiceService";
 import { invoiceSchema, type InvoiceInput } from "@/lib/validators";
 import { generateInvoiceNumber, generateShareToken } from "@/lib/utils";
@@ -15,41 +16,48 @@ import type { InvoiceType } from "@prisma/client";
 
 export async function createInvoiceAction(input: InvoiceInput & { type: InvoiceType }) {
   const auth = await getAuthFromCookies();
-  if (!auth) throw new Error("Tidak terautentikasi");
+  if (!auth) throw new Error("Not authenticated");
 
   const parsed = invoiceSchema.safeParse(input);
-  if (!parsed.success) throw new Error("Data tidak valid");
+  if (!parsed.success) throw new Error("Invalid data");
 
   return createInvoice(auth.tenantId, input);
 }
 
 export async function updateInvoiceAction(id: string, input: InvoiceInput) {
   const auth = await getAuthFromCookies();
-  if (!auth) throw new Error("Tidak terautentikasi");
+  if (!auth) throw new Error("Not authenticated");
 
   const parsed = invoiceSchema.safeParse(input);
-  if (!parsed.success) throw new Error("Data tidak valid");
+  if (!parsed.success) throw new Error("Invalid data");
 
   return updateInvoice(id, auth.tenantId, input);
 }
 
 export async function softDeleteInvoiceAction(id: string) {
   const auth = await getAuthFromCookies();
-  if (!auth) throw new Error("Tidak terautentikasi");
+  if (!auth) throw new Error("Not authenticated");
 
   return softDeleteInvoice(id, auth.tenantId);
 }
 
 export async function duplicateInvoiceAction(id: string) {
   const auth = await getAuthFromCookies();
-  if (!auth) throw new Error("Tidak terautentikasi");
+  if (!auth) throw new Error("Not authenticated");
 
   const existing = await prisma.invoice.findFirst({
     where: { id, tenantId: auth.tenantId, isDeleted: false },
     include: { items: true },
   });
 
-  if (!existing) throw new Error("Invoice tidak ditemukan");
+  if (!existing) throw new Error("Invoice not found");
+
+  if (existing.type === "INVOICE") {
+    const limitCheck = await checkInvoiceLimit(auth.tenantId);
+    if (!limitCheck.allowed) {
+      throw new Error("Free invoice limit reached");
+    }
+  }
 
   const seq = await getNextSequenceNumber(auth.tenantId);
   const number = generateInvoiceNumber(existing.type, seq);
@@ -87,7 +95,7 @@ export async function duplicateInvoiceAction(id: string) {
 
 export async function convertQuotationToInvoiceAction(id: string) {
   const auth = await getAuthFromCookies();
-  if (!auth) throw new Error("Tidak terautentikasi");
+  if (!auth) throw new Error("Not authenticated");
 
   return convertQuotationToInvoice(id, auth.tenantId);
 }

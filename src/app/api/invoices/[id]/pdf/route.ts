@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const { id } = await params;
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const invoice = await prisma.invoice.findFirst({
     where: { id, tenantId: auth.tenantId, isDeleted: false },
@@ -20,7 +20,7 @@ export async function GET(
     },
   });
 
-  if (!invoice) return NextResponse.json({ error: "Invoice tidak ditemukan" }, { status: 404 });
+  if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
 
   const isWatermarked = invoice.tenant.subscription?.tier === "FREE";
 

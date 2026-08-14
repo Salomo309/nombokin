@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Logo } from "@/components/shared/Logo";
 import { PDFPreview } from "@/components/invoices/PDFPreview";
+import { toast } from "@/components/ui/toast";
 import { formatRupiah } from "@/lib/utils";
 
 interface InvoiceItem {
@@ -67,11 +68,11 @@ export default function PublicInvoicePage() {
           const data = await res.json();
           setInvoice(data);
         } else {
-          setError("Invoice tidak ditemukan atau telah dihapus.");
+          setError("Invoice not found or has been deleted.");
         }
       } catch (err) {
         console.error(err);
-        setError("Gagal memuat detail invoice.");
+        setError("Failed to load invoice details.");
       } finally {
         setLoading(false);
       }
@@ -95,11 +96,11 @@ export default function PublicInvoicePage() {
         window.location.href = data.paymentUrl;
       } else {
         const errorData = await res.json();
-        setError(errorData.error || "Gagal memproses pembayaran");
+        setError(errorData.error || "Failed to process payment");
       }
     } catch (err) {
       console.error(err);
-      setError("Terjadi kesalahan koneksi server.");
+      setError("Server connection error.");
     } finally {
       setPaying(false);
     }
@@ -115,7 +116,7 @@ export default function PublicInvoicePage() {
       window.open(`/api/i/${shareToken}/pdf`, "_blank");
     } catch (err) {
       console.error(err);
-      alert("Gagal mengunduh PDF");
+      toast({ variant: "destructive", title: "Failed to download PDF" });
     }
   };
 
@@ -137,7 +138,7 @@ export default function PublicInvoicePage() {
           <CardHeader className="text-center">
             <AlertCircle className="h-10 w-10 text-destructive mx-auto mb-2" />
             <CardTitle>Terjadi Kesalahan</CardTitle>
-            <CardDescription>{error || "Invoice tidak ditemukan"}</CardDescription>
+            <CardDescription>{error || "Invoice not found"}</CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center pt-2">
             <Button onClick={() => router.push("/")} variant="outline">

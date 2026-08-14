@@ -4,14 +4,14 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
     const body = await request.json();
     const { orderId } = body as { orderId?: string };
 
     if (!orderId) {
-      return NextResponse.json({ error: "orderId wajib diisi" }, { status: 400 });
+      return NextResponse.json({ error: "orderId is required" }, { status: 400 });
     }
 
     const payment = await prisma.payment.findFirst({
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!payment) {
-      return NextResponse.json({ error: "Pembayaran tidak ditemukan" }, { status: 404 });
+      return NextResponse.json({ error: "Payment not found" }, { status: 404 });
     }
 
     if (payment.status === "PENDING") {
@@ -32,6 +32,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, status: "CANCELLED" });
   } catch (err) {
     console.error("[BillingCancel/POST]", err);
-    return NextResponse.json({ error: "Gagal membatalkan pembayaran" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to cancel payment" }, { status: 500 });
   }
 }

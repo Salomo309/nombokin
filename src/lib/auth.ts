@@ -9,10 +9,11 @@ const JWT_REFRESH_SECRET = new TextEncoder().encode(
   process.env.JWT_REFRESH_SECRET ?? "fallback-refresh-secret-change-in-production"
 );
 
-const ACCESS_TOKEN_EXPIRY = "15m";
+const ACCESS_TOKEN_EXPIRY = "60m";
 const REFRESH_TOKEN_EXPIRY = "7d";
 const ACCESS_COOKIE = "nombokin_access";
 const REFRESH_COOKIE = "nombokin_refresh";
+const ACCESS_COOKIE_MAX_AGE = 60 * 60; // 1 hour
 
 export interface JWTPayload {
   userId: string;
@@ -70,17 +71,17 @@ export async function setAuthCookies(
   accessToken: string,
   refreshToken: string
 ): Promise<void> {
-  const isProd = process.env.NODE_ENV === "production";
+  const secure = (process.env.NEXT_PUBLIC_APP_URL ?? "").startsWith("https");
   response.cookies.set(ACCESS_COOKIE, accessToken, {
     httpOnly: true,
-    secure: isProd,
+    secure,
     sameSite: "lax",
-    maxAge: 15 * 60, // 15 minutes
+    maxAge: ACCESS_COOKIE_MAX_AGE,
     path: "/",
   });
   response.cookies.set(REFRESH_COOKIE, refreshToken, {
     httpOnly: true,
-    secure: isProd,
+    secure,
     sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60, // 7 days
     path: "/api/auth",

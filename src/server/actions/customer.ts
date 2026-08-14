@@ -6,10 +6,10 @@ import { customerSchema, type CustomerInput } from "@/lib/validators";
 
 export async function createCustomerAction(input: CustomerInput) {
   const auth = await getAuthFromCookies();
-  if (!auth) throw new Error("Tidak terautentikasi");
+  if (!auth) throw new Error("Not authenticated");
 
   const parsed = customerSchema.safeParse(input);
-  if (!parsed.success) throw new Error("Data tidak valid");
+  if (!parsed.success) throw new Error("Invalid data");
 
   return prisma.customer.create({
     data: {
@@ -25,15 +25,15 @@ export async function createCustomerAction(input: CustomerInput) {
 
 export async function updateCustomerAction(id: string, input: CustomerInput) {
   const auth = await getAuthFromCookies();
-  if (!auth) throw new Error("Tidak terautentikasi");
+  if (!auth) throw new Error("Not authenticated");
 
   const parsed = customerSchema.safeParse(input);
-  if (!parsed.success) throw new Error("Data tidak valid");
+  if (!parsed.success) throw new Error("Invalid data");
 
   const existing = await prisma.customer.findFirst({
     where: { id, tenantId: auth.tenantId },
   });
-  if (!existing) throw new Error("Pelanggan tidak ditemukan");
+  if (!existing) throw new Error("Customer not found");
 
   return prisma.customer.update({
     where: { id },
@@ -49,12 +49,12 @@ export async function updateCustomerAction(id: string, input: CustomerInput) {
 
 export async function deleteCustomerAction(id: string) {
   const auth = await getAuthFromCookies();
-  if (!auth) throw new Error("Tidak terautentikasi");
+  if (!auth) throw new Error("Not authenticated");
 
   const existing = await prisma.customer.findFirst({
     where: { id, tenantId: auth.tenantId },
   });
-  if (!existing) throw new Error("Pelanggan tidak ditemukan");
+  if (!existing) throw new Error("Customer not found");
 
   return prisma.customer.delete({
     where: { id },

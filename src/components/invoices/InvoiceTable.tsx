@@ -24,6 +24,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { toast } from "@/components/ui/toast";
+import { Checkbox } from "@/components/ui/checkbox";
 import { formatRupiah, formatDateShort, STATUS_COLORS, STATUS_LABELS } from "@/lib/utils";
 import { softDeleteInvoiceAction, duplicateInvoiceAction, convertQuotationToInvoiceAction } from "@/server/actions/invoice";
 
@@ -51,16 +54,52 @@ interface InvoiceTableProps {
 
 export function InvoiceTable({ invoices, type, onRefresh }: InvoiceTableProps) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const allSelected = invoices.length > 0 && invoices.every((inv) => selectedIds.has(inv.id));
+  const someSelected = invoices.some((inv) => selectedIds.has(inv.id));
+
+  const toggleRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = (checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) invoices.forEach((inv) => next.add(inv.id));
+      else invoices.forEach((inv) => next.delete(inv.id));
+      return next;
+    });
+  };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus dokumen ini?")) return;
+    const ok = await confirm({
+      title: "Delete document?",
+      description: "Are you sure you want to delete this document?",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await softDeleteInvoiceAction(id);
+      toast({
+        variant: "success",
+        title: "Document deleted successfully",
+      });
       if (onRefresh) onRefresh();
       else router.refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menghapus dokumen");
+      toast({
+        variant: "destructive",
+        title: err instanceof Error ? err.message : "Failed to delete document",
+      });
     }
   };
 
@@ -70,7 +109,10 @@ export function InvoiceTable({ invoices, type, onRefresh }: InvoiceTableProps) {
       router.push(type === "INVOICE" ? `/invoices/${duplicated.id}/edit` : `/quotations/${duplicated.id}/edit`);
       router.refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menduplikat dokumen");
+      toast({
+        variant: "destructive",
+        title: err instanceof Error ? err.message : "Failed to duplicate document",
+      });
     }
   };
 
@@ -80,7 +122,10 @@ export function InvoiceTable({ invoices, type, onRefresh }: InvoiceTableProps) {
       router.push(`/invoices/${invoice.id}`);
       router.refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal mengkonversi penawaran");
+      toast({
+        variant: "destructive",
+        title: err instanceof Error ? err.message : "Failed to convert quotation",
+      });
     }
   };
 
@@ -92,7 +137,10 @@ export function InvoiceTable({ invoices, type, onRefresh }: InvoiceTableProps) {
         if (data.waLink) {
           window.open(data.waLink, "_blank");
         } else {
-          alert(`Invoice terkirim! Link public: ${data.shareLink}`);
+          toast({
+            variant: "success",
+            title: `Invoice sent! Public link: ${data.shareLink}`,
+          });
         }
         if (onRefresh) onRefresh();
         else router.refresh();
@@ -108,6 +156,14 @@ export function InvoiceTable({ invoices, type, onRefresh }: InvoiceTableProps) {
         <table className="w-full text-left text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/80 bg-muted/20 text-muted-foreground font-semibold">
+              <th className="py-3 px-4 w-10">
+                <Checkbox
+                  checked={allSelected}
+                  indeterminate={someSelected && !allSelected}
+                  onCheckedChange={toggleAll}
+                  aria-label="Pilih semua"
+                />
+              </th>
               <th className="py-3 px-4">No. Dokumen</th>
               <th className="py-3 px-4">Pelanggan</th>
               <th className="py-3 px-4">Tanggal Terbit</th>
@@ -120,7 +176,7 @@ export function InvoiceTable({ invoices, type, onRefresh }: InvoiceTableProps) {
           <tbody className="divide-y divide-border/60">
             {invoices.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-muted-foreground">
+                <td colSpan={8} className="py-12 text-center text-muted-foreground">
                   Tidak ada dokumen ditemukan.
                 </td>
               </tr>
@@ -137,7 +193,14 @@ export function InvoiceTable({ invoices, type, onRefresh }: InvoiceTableProps) {
                     key={inv.id}
                     className="hover:bg-secondary/20 transition-colors text-foreground font-medium"
                   >
-                    <td className="py-3.5 px-4 font-serif text-sm font-bold tracking-tight text-ink-dark tabular-nums">
+                    <td className="py-3.5 px-4">
+                      <Checkbox
+                        checked={selectedIds.has(inv.id)}
+                        onCheckedChange={() => toggleRow(inv.id)}
+                        aria-label={`Pilih ${inv.number}`}
+                      />
+                    </td>
+                    <td className="py-3.5 px-4 font-serif text-sm font-bold tracking-tight text-foreground tabular-nums">
                       {inv.number}
                     </td>
                     <td className="py-3.5 px-4">
@@ -158,7 +221,7 @@ export function InvoiceTable({ invoices, type, onRefresh }: InvoiceTableProps) {
                     <td className="py-3.5 px-4 text-xs tabular-nums text-muted-foreground">
                       {formatDateShort(inv.dueDate)}
                     </td>
-                    <td className="py-3.5 px-4 text-right font-serif font-bold text-ink-dark tabular-nums">
+                    <td className="py-3.5 px-4 text-right font-serif font-bold text-foreground tabular-nums">
                       {formatRupiah(parseFloat(inv.total.toString()))}
                     </td>
                     <td className="py-3.5 px-4">

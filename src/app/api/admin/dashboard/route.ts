@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { redisGetJson, redisSetJson } from "@/server/redis";
+
+const CACHE_KEY = "nombokin:admin:dashboard";
+const CACHE_TTL = 60; // detik
 
 export async function GET(request: NextRequest) {
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   if (auth.role !== "ADMIN") {
-    return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
+    return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
+
+  const cached = await redisGetJson<Record<string, unknown>>(CACHE_KEY);
+  if (cached) return NextResponse.json(cached);
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -68,7 +75,7 @@ export async function GET(request: NextRequest) {
     };
   });
 
-  return NextResponse.json({
+  const payload = {
     totalRevenue: totalRevenue._sum.amount ?? 0,
     revenueThisMonth: revenueThisMonth._sum.amount ?? 0,
     totalUsers,
@@ -79,5 +86,9 @@ export async function GET(request: NextRequest) {
     invoiceBreakdown,
     tierBreakdown,
     revenueByMonth,
-  });
+  };
+
+  await redisSetJson(CACHE_KEY, payload, CACHE_TTL);
+
+  return NextResponse.json(payload);
 }

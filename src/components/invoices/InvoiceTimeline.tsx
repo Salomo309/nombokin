@@ -17,7 +17,7 @@ export function InvoiceTimeline({
   const steps = [
     {
       title: "Invoice Dibuat",
-      description: `Draf berhasil dibuat pada ${formatDateShort(createdAt)}`,
+      description: `Draft created successfully on ${formatDateShort(createdAt)}`,
       completed: true,
       icon: Clock,
       color: "text-muted-foreground",
@@ -26,8 +26,8 @@ export function InvoiceTimeline({
       title: "Invoice Dikirim",
       description:
         status === "DRAFT"
-          ? "Belum dikirim ke pelanggan"
-          : `Tautan terkirim via WhatsApp / Email pada ${
+          ? "Not sent to customer yet"
+          : `Link sent via WhatsApp / Email on ${
               sentAt ? formatDateShort(sentAt) : formatDateShort(createdAt)
             }`,
       completed: status !== "DRAFT",
@@ -38,10 +38,10 @@ export function InvoiceTimeline({
       title: "Pembayaran Lunas",
       description:
         status === "PAID"
-          ? `Pembayaran terkonfirmasi via Midtrans QRIS/VA pada ${
-              paidAt ? formatDate(paidAt) : "hari ini"
+          ? `Payment confirmed via Midtrans QRIS/VA on ${
+              paidAt ? formatDate(paidAt) : "today"
             }`
-          : "Menunggu pembayaran klien",
+          : "Waiting for customer payment",
       completed: status === "PAID",
       icon: CheckCircle2,
       color: status === "PAID" ? "text-success" : "text-muted-foreground/40",

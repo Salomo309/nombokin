@@ -11,7 +11,7 @@ export async function GET(
 ) {
   const { id } = await params;
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const invoice = await prisma.invoice.findFirst({
     where: { id, tenantId: auth.tenantId, isDeleted: false },
@@ -22,7 +22,7 @@ export async function GET(
     },
   });
 
-  if (!invoice) return NextResponse.json({ error: "Invoice tidak ditemukan" }, { status: 404 });
+  if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
 
   return NextResponse.json(invoice);
 }
@@ -34,7 +34,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
     const body = await request.json();
@@ -42,7 +42,7 @@ export async function PATCH(
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Data tidak valid", details: parsed.error.flatten() },
+        { error: "Invalid data", details: parsed.error.flatten() },
         { status: 400 }
       );
     }
@@ -50,7 +50,7 @@ export async function PATCH(
     const invoice = await updateInvoice(id, auth.tenantId, parsed.data);
     return NextResponse.json(invoice);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Gagal mengupdate invoice";
+    const message = err instanceof Error ? err.message : "Failed to update invoice";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
@@ -62,13 +62,13 @@ export async function DELETE(
 ) {
   const { id } = await params;
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
     await softDeleteInvoice(id, auth.tenantId);
-    return NextResponse.json({ message: "Invoice dihapus" });
+    return NextResponse.json({ message: "Invoice deleted" });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Gagal menghapus invoice";
+    const message = err instanceof Error ? err.message : "Failed to delete invoice";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

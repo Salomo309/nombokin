@@ -19,7 +19,7 @@ export async function GET(
     });
 
     if (!invoice) {
-      return NextResponse.json({ error: "Invoice tidak ditemukan" }, { status: 404 });
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
     const isWatermarked = invoice.tenant.subscription?.tier === "FREE";
@@ -70,6 +70,6 @@ export async function GET(
     });
   } catch (err) {
     console.error("[PublicPDF/GET]", err);
-    return NextResponse.json({ error: "Gagal mengunduh PDF" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to download PDF" }, { status: 500 });
   }
 }

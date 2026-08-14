@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     }).catch(() => {});
   }
 
-  const response = NextResponse.json({ message: "Berhasil keluar" });
+  const response = NextResponse.json({ message: "Signed out successfully" });
   await clearAuthCookies(response);
   return response;
 }

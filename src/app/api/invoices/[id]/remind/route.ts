@@ -10,7 +10,7 @@ export async function POST(
 ) {
   const { id } = await params;
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
     const invoice = await prisma.invoice.findFirst({
@@ -18,7 +18,7 @@ export async function POST(
       include: { customer: true, tenant: true },
     });
 
-    if (!invoice) return NextResponse.json({ error: "Invoice tidak ditemukan" }, { status: 404 });
+    if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const shareLink = `${appUrl}/i/${invoice.shareToken}`;
@@ -46,7 +46,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, shareLink, waLink });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Gagal mengirim pengingat";
+    const message = err instanceof Error ? err.message : "Failed to send reminder";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

@@ -214,7 +214,7 @@ export default function LandingPage() {
                 </span>
                 <span
                   style={{ transform: "translateZ(30px)" }}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[#15803D]/10 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#15803D]"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-success"
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-current" />
                   Lunas · QRIS
@@ -271,7 +271,7 @@ export default function LandingPage() {
                     <tr>
                       <td className="py-3 pr-2 font-medium text-muted-foreground">Diskon klien berulang</td>
                       <td className="px-2 py-3 text-right text-muted-foreground">—</td>
-                      <td className="py-3 pl-2 text-right tabular-nums text-[#15803D]">− Rp 550.000</td>
+                      <td className="py-3 pl-2 text-right tabular-nums text-success">− Rp 550.000</td>
                     </tr>
                   </tbody>
                 </table>
@@ -311,7 +311,7 @@ export default function LandingPage() {
             {/* floating payment notification */}
             <Reveal delay={0.4}>
               <div className="absolute -bottom-6 -left-4 hidden items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-lg sm:flex">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#15803D]/10 text-[#15803D]">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-success/10 text-success">
                 <Banknote className="h-4 w-4" />
               </span>
               <div>

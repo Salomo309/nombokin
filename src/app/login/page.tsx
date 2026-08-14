@@ -3,16 +3,19 @@
 import React, { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { KeyRound, Mail, AlertCircle, ArrowRight } from "lucide-react";
+import { KeyRound, Mail, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Logo } from "@/components/shared/Logo";
+import { GoogleButton } from "@/components/auth/GoogleButton";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/dashboard";
+  const verified = searchParams.get("verified");
+  const oauthError = searchParams.get("error");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +28,7 @@ function LoginForm() {
     setError(null);
 
     if (!email || !password) {
-      setError("Email dan password wajib diisi");
+      setError("Email and password are required");
       setLoading(false);
       return;
     }
@@ -42,11 +45,11 @@ function LoginForm() {
         router.refresh();
       } else {
         const data = await res.json();
-        setError(data.error || "Gagal masuk. Coba periksa email & password Anda.");
+        setError(data.error || "Login failed. Check your email & password.");
       }
     } catch (err) {
       console.error(err);
-      setError("Terjadi kesalahan koneksi server.");
+      setError("Server connection error.");
     } finally {
       setLoading(false);
     }
@@ -73,12 +76,48 @@ function LoginForm() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {verified === "1" && (
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200/50 p-3.5 text-xs text-green-700">
+                <CheckCircle2 className="h-4.5 w-4.5 shrink-0" />
+                <span>Email Anda berhasil diverifikasi. Silakan masuk.</span>
+              </div>
+            )}
+            {verified && verified !== "1" && (
+              <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200/50 p-3.5 text-xs text-red-700">
+                <AlertCircle className="h-4.5 w-4.5 shrink-0" />
+                <span>
+                  {verified === "invalid" || verified === "expired"
+                    ? "Link verifikasi tidak valid atau sudah kedaluwarsa. Minta kirim ulang setelah masuk."
+                    : "Verifikasi email gagal. Coba lagi nanti."}
+                </span>
+              </div>
+            )}
+            {oauthError && (
+              <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200/50 p-3.5 text-xs text-red-700">
+                <AlertCircle className="h-4.5 w-4.5 shrink-0" />
+                <span>
+                  {oauthError === "google_not_configured"
+                    ? "Login dengan Google belum diaktifkan. Silakan gunakan email & password."
+                    : "Login dengan Google gagal. Coba lagi atau gunakan email & password."}
+                </span>
+              </div>
+            )}
             {error && (
               <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200/50 p-3.5 text-xs text-red-700">
                 <AlertCircle className="h-4.5 w-4.5 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
+
+            <GoogleButton />
+
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-[11px] font-medium text-muted-foreground uppercase">
+                atau masuk dengan email
+              </span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">

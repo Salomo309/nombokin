@@ -47,13 +47,13 @@ export async function GET(
     });
 
     if (!invoice) {
-      return NextResponse.json({ error: "Invoice tidak ditemukan" }, { status: 404 });
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
     return NextResponse.json(invoice);
   } catch (err) {
     console.error("[PublicInvoice/GET]", err);
-    return NextResponse.json({ error: "Terjadi kesalahan" }, { status: 500 });
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
 
@@ -69,7 +69,7 @@ export async function POST(
     });
 
     if (!invoice) {
-      return NextResponse.json({ error: "Invoice tidak ditemukan" }, { status: 404 });
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -78,7 +78,7 @@ export async function POST(
     return NextResponse.json({ paymentUrl });
   } catch (err) {
     console.error("[PublicInvoice/POST]", err);
-    const message = err instanceof Error ? err.message : "Gagal memproses pembayaran";
+    const message = err instanceof Error ? err.message : "Failed to process payment";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -10,7 +10,7 @@ export async function GET(
 ) {
   const { id } = await params;
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
     const customer = await prisma.customer.findFirst({
@@ -18,13 +18,13 @@ export async function GET(
     });
 
     if (!customer) {
-      return NextResponse.json({ error: "Pelanggan tidak ditemukan" }, { status: 404 });
+      return NextResponse.json({ error: "Customer not found" }, { status: 404 });
     }
 
     return NextResponse.json(customer);
   } catch (err) {
     console.error("[CustomerDetail/GET]", err);
-    return NextResponse.json({ error: "Gagal memuat detail pelanggan" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to load customer details" }, { status: 500 });
   }
 }
 
@@ -35,7 +35,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
     const body = await request.json();
@@ -43,7 +43,7 @@ export async function PATCH(
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Data tidak valid", details: parsed.error.flatten() },
+        { error: "Invalid data", details: parsed.error.flatten() },
         { status: 400 }
       );
     }
@@ -60,14 +60,14 @@ export async function PATCH(
     });
 
     if (updatedCustomer.count === 0) {
-      return NextResponse.json({ error: "Pelanggan tidak ditemukan atau tidak diijinkan" }, { status: 404 });
+      return NextResponse.json({ error: "Customer not found or not allowed" }, { status: 404 });
     }
 
     const customer = await prisma.customer.findUnique({ where: { id } });
     return NextResponse.json(customer);
   } catch (err) {
     console.error("[CustomerDetail/PATCH]", err);
-    return NextResponse.json({ error: "Gagal mengupdate pelanggan" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to update customer" }, { status: 500 });
   }
 }
 
@@ -78,7 +78,7 @@ export async function DELETE(
 ) {
   const { id } = await params;
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
     // Delete customer (onDelete SetNull is configured on Invoice model)
@@ -87,12 +87,12 @@ export async function DELETE(
     });
 
     if (deleted.count === 0) {
-      return NextResponse.json({ error: "Pelanggan tidak ditemukan atau tidak diijinkan" }, { status: 404 });
+      return NextResponse.json({ error: "Customer not found or not allowed" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, message: "Pelanggan berhasil dihapus" });
+    return NextResponse.json({ success: true, message: "Customer deleted successfully" });
   } catch (err) {
     console.error("[CustomerDetail/DELETE]", err);
-    return NextResponse.json({ error: "Gagal menghapus pelanggan" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to delete customer" }, { status: 500 });
   }
 }

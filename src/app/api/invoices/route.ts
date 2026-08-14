@@ -8,7 +8,7 @@ import type { InvoiceType } from "@prisma/client";
 // GET /api/invoices — list with filter + search
 export async function GET(request: NextRequest) {
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const { searchParams } = request.nextUrl;
   const type = (searchParams.get("type") ?? "INVOICE") as InvoiceType;
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 // POST /api/invoices — create
 export async function POST(request: NextRequest) {
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
     const body = await request.json();
@@ -59,23 +59,26 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Data tidak valid", details: parsed.error.flatten() },
+        { error: "Invalid data", details: parsed.error.flatten() },
         { status: 400 }
       );
     }
 
-    // Check tier limit
-    const limitCheck = await checkInvoiceLimit(auth.tenantId);
-    if (!limitCheck.allowed) {
-      return NextResponse.json(
-        {
-          error: "Batas invoice gratis tercapai",
-          code: "LIMIT_EXCEEDED",
-          count: limitCheck.count,
-          limit: limitCheck.limit,
-        },
-        { status: 403 }
-      );
+    // Check tier limit (only for invoices; quotations are not counted)
+    const isQuotation = body.type === "QUOTATION";
+    if (!isQuotation) {
+      const limitCheck = await checkInvoiceLimit(auth.tenantId);
+      if (!limitCheck.allowed) {
+        return NextResponse.json(
+          {
+            error: "Free invoice limit reached",
+            code: "LIMIT_EXCEEDED",
+            count: limitCheck.count,
+            limit: limitCheck.limit,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const invoice = await createInvoice(auth.tenantId, {
@@ -86,6 +89,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(invoice, { status: 201 });
   } catch (err) {
     console.error("[Invoice/POST]", err);
-    return NextResponse.json({ error: "Gagal membuat invoice" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create invoice" }, { status: 500 });
   }
 }

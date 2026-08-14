@@ -80,6 +80,7 @@ model Tenant {
   users         User[]
   customers     Customer[]
   invoices      Invoice[]
+  products      Product[]
   subscription  Subscription?
   payments      Payment[]
 
@@ -87,16 +88,19 @@ model Tenant {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  tenantId     String
-  email        String   @unique
-  name         String
-  passwordHash String?
-  role         UserRole @default(MEMBER)
-  googleId     String?  @unique
-  refreshToken String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                        String    @id @default(cuid())
+  tenantId                  String
+  email                     String    @unique
+  name                      String
+  passwordHash              String?
+  role                      UserRole  @default(MEMBER)
+  googleId                  String?   @unique
+  refreshToken              String?
+  emailVerifiedAt           DateTime?
+  verificationToken         String?   @unique
+  verificationTokenExpiresAt DateTime?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -172,6 +176,22 @@ model InvoiceItem {
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  unitPrice   Decimal  @db.Decimal(15, 2)
+  currency    String   @default("IDR")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
 }
 
 model Subscription {

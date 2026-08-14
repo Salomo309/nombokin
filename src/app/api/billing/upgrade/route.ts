@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
     const body = await request.json();
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     };
 
     if (!tier || !interval) {
-      return NextResponse.json({ error: "Tier dan interval wajib diisi" }, { status: 400 });
+      return NextResponse.json({ error: "Tier and interval are required" }, { status: 400 });
     }
 
     let price = 0;
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error("[BillingUpgrade/POST]", err);
-    const message = err instanceof Error ? err.message : "Gagal memproses langganan";
+    const message = err instanceof Error ? err.message : "Failed to process subscription";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

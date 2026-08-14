@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import {
   signAccessToken,
@@ -8,6 +9,7 @@ import {
 } from "@/lib/auth";
 import { registerSchema } from "@/lib/validators";
 import { slugify } from "@/lib/utils";
+import { sendVerificationEmail } from "@/lib/resend";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Data tidak valid", details: parsed.error.flatten() },
+        { error: "Invalid data", details: parsed.error.flatten() },
         { status: 400 }
       );
     }
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest) {
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       return NextResponse.json(
-        { error: "Email sudah digunakan" },
+        { error: "Email is already registered" },
         { status: 409 }
       );
     }
@@ -40,6 +42,10 @@ export async function POST(request: NextRequest) {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
+    const verificationToken = randomBytes(32).toString("hex");
+    const verificationTokenExpiresAt = new Date(
+      Date.now() + 24 * 60 * 60 * 1000
+    );
 
     // Create tenant + user + subscription in transaction
     const { user, tenant } = await prisma.$transaction(async (tx) => {
@@ -54,6 +60,8 @@ export async function POST(request: NextRequest) {
           name,
           passwordHash,
           role: "OWNER",
+          verificationToken,
+          verificationTokenExpiresAt,
         },
       });
 
@@ -62,6 +70,14 @@ export async function POST(request: NextRequest) {
       });
 
       return { user, tenant };
+    });
+
+    // Send verification email (non-blocking failure is fine)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin;
+    await sendVerificationEmail({
+      to: user.email,
+      name: user.name,
+      verifyUrl: `${appUrl}/api/auth/verify-email?token=${verificationToken}`,
     });
 
     // Issue tokens
@@ -81,7 +97,13 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json(
       {
-        user: { id: user.id, name: user.name, email: user.email, role: user.role },
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          emailVerified: false,
+        },
         tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
       },
       { status: 201 }
@@ -92,7 +114,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error("[Auth/Register]", err);
     return NextResponse.json(
-      { error: "Terjadi kesalahan, coba lagi" },
+      { error: "Something went wrong, please try again" },
       { status: 500 }
     );
   }

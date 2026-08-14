@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Email atau password tidak valid" },
+        { error: "Invalid email or password" },
         { status: 400 }
       );
     }
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     if (!user || !user.passwordHash) {
       return NextResponse.json(
-        { error: "Email atau password salah" },
+        { error: "Wrong email or password" },
         { status: 401 }
       );
     }
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatch) {
       return NextResponse.json(
-        { error: "Email atau password salah" },
+        { error: "Wrong email or password" },
         { status: 401 }
       );
     }
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error("[Auth/Login]", err);
     return NextResponse.json(
-      { error: "Terjadi kesalahan, coba lagi" },
+      { error: "Something went wrong, please try again" },
       { status: 500 }
     );
   }

@@ -8,13 +8,13 @@ export async function POST(
 ) {
   const { id } = await params;
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
     const invoice = await convertQuotationToInvoice(id, auth.tenantId);
     return NextResponse.json(invoice, { status: 201 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Gagal mengkonversi penawaran";
+    const message = err instanceof Error ? err.message : "Failed to convert quotation";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

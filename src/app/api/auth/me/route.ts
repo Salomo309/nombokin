@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 export async function GET(request: NextRequest) {
   const auth = await getAuthFromRequest(request);
   if (!auth) {
-    return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (!user) {
-    return NextResponse.json({ error: "User tidak ditemukan" }, { status: 404 });
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
   return NextResponse.json({
@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     name: user.name,
     email: user.email,
     role: user.role,
+    emailVerifiedAt: user.emailVerifiedAt,
     tenant: {
       id: user.tenant.id,
       name: user.tenant.name,

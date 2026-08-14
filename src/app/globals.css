@@ -125,10 +125,16 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Stationery Document Mockup details */
 .paper-sheet {
-  background-color: var(--card);
+  background-color: #FAF7F2;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
   position: relative;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  .paper-sheet {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  }
 }
 
 .paper-sheet::before {

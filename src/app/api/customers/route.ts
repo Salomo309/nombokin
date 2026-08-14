@@ -6,7 +6,7 @@ import { customerSchema } from "@/lib/validators";
 // GET /api/customers — List customers with search
 export async function GET(request: NextRequest) {
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const { searchParams } = request.nextUrl;
   const search = searchParams.get("search") ?? "";
@@ -31,14 +31,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(customers);
   } catch (err) {
     console.error("[Customers/GET]", err);
-    return NextResponse.json({ error: "Gagal memuat pelanggan" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to load customers" }, { status: 500 });
   }
 }
 
 // POST /api/customers — Create a customer
 export async function POST(request: NextRequest) {
   const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Tidak terautentikasi" }, { status: 401 });
+  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
     const body = await request.json();
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Data tidak valid", details: parsed.error.flatten() },
+        { error: "Invalid data", details: parsed.error.flatten() },
         { status: 400 }
       );
     }
@@ -65,6 +65,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(customer, { status: 201 });
   } catch (err) {
     console.error("[Customers/POST]", err);
-    return NextResponse.json({ error: "Gagal membuat pelanggan" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create customer" }, { status: 500 });
   }
 }
