@@ -36,12 +36,20 @@ export async function updateCompanyAction(data: {
 
   if (!data.name) throw new Error("Business name is required");
 
+  // Custom letterhead & watermark adalah fitur berbayar — paksa default untuk FREE
+  const subscription = await prisma.subscription.findUnique({
+    where: { tenantId: auth.tenantId },
+  });
+  const isPaidTier = !!subscription && subscription.tier !== "FREE";
+
   await prisma.tenant.update({
     where: { id: auth.tenantId },
     data: {
       name: data.name,
-      letterheadSignature: data.letterheadSignature || null,
-      watermarkText: data.watermarkText || "Dibuat dengan Nombokin",
+      letterheadSignature: isPaidTier ? data.letterheadSignature || null : null,
+      watermarkText: isPaidTier
+        ? data.watermarkText || "Dibuat dengan Nombokin"
+        : "Dibuat dengan Nombokin",
     },
   });
 

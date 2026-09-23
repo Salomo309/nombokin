@@ -11,6 +11,17 @@ export async function POST(request: NextRequest) {
   if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
+    const subscription = await prisma.subscription.findUnique({
+      where: { tenantId: auth.tenantId },
+    });
+
+    if (!subscription || subscription.tier === "FREE") {
+      return NextResponse.json(
+        { error: "Custom logo requires a PRO subscription" },
+        { status: 403 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 

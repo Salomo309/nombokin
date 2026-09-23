@@ -382,6 +382,18 @@ export default function InvoiceDetailPage() {
                       </Button>
                     )}
                   </div>
+                ) : invoice.tenant.subscription?.tier === "FREE" ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 rounded-lg bg-secondary/40 border border-border/60 p-3.5 text-xs text-muted-foreground leading-normal">
+                      <AlertCircle className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
+                      <span>Link bayar QRIS/VA khusus paket PRO ke atas.</span>
+                    </div>
+                    <Button asChild variant="outline" className="w-full gap-2 text-xs">
+                      <Link href="/settings?tab=langganan">
+                        <CreditCard className="h-4 w-4" /> Upgrade ke PRO
+                      </Link>
+                    </Button>
+                  </div>
                 ) : (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 rounded-lg bg-secondary/40 border border-border/60 p-3.5 text-xs text-muted-foreground leading-normal">

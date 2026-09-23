@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthFromRequest } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { createPaymentLink } from "@/server/services/paymentService";
 
 export async function POST(
@@ -11,6 +12,17 @@ export async function POST(
   if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   try {
+    const subscription = await prisma.subscription.findUnique({
+      where: { tenantId: auth.tenantId },
+    });
+
+    if (!subscription || subscription.tier === "FREE") {
+      return NextResponse.json(
+        { error: "Online payment requires a PRO subscription" },
+        { status: 403 }
+      );
+    }
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const paymentUrl = await createPaymentLink(id, auth.tenantId, appUrl);
     return NextResponse.json({ paymentUrl });
