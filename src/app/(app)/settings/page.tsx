@@ -564,8 +564,13 @@ function SettingsContent() {
                   )}
                 </div>
 
-                {tier === "FREE" && (
+                {tier !== "BUSINESS" && (
                   <div className="space-y-6">
+                    {tier === "PRO" && (
+                      <p className="text-center text-xs text-muted-foreground">
+                        Paket <strong className="text-foreground">PRO</strong> Anda sedang aktif — upgrade ke BISNIS kapan saja.
+                      </p>
+                    )}
                     <div className="flex justify-center gap-4 border-b border-border pb-4">
                       <Button
                         variant={billingInterval === "MONTHLY" ? "default" : "outline"}
@@ -585,8 +590,9 @@ function SettingsContent() {
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 max-w-2xl mx-auto items-stretch">
-                      {/* PRO Box */}
+                    <div className={`grid grid-cols-1 gap-6 mx-auto items-stretch ${tier === "FREE" ? "sm:grid-cols-2 max-w-2xl" : "max-w-md"}`}>
+                      {/* PRO Box (hanya untuk tier FREE) */}
+                      {tier === "FREE" && (
                       <div className="flex flex-col justify-between rounded-xl border-2 border-primary bg-card p-6 shadow-xs relative">
                         <div className="space-y-3">
                           <h4 className="font-serif font-bold text-base">Paket PRO</h4>
@@ -607,6 +613,7 @@ function SettingsContent() {
                           Upgrade ke Pro
                         </Button>
                       </div>
+                      )}
 
                       {/* BUSINESS Box */}
                       <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-6 shadow-xs">
@@ -630,6 +637,11 @@ function SettingsContent() {
                       </div>
                     </div>
                   </div>
+                )}
+                {tier === "BUSINESS" && (
+                  <p className="text-center text-xs text-muted-foreground py-2">
+                    Anda memakai paket tertinggi. Terima kasih telah mendukung Nombokin!
+                  </p>
                 )}
               </CardContent>
             </Card>
