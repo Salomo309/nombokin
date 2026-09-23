@@ -154,6 +154,21 @@ export async function updateInvoice(
   if (existing.status !== "DRAFT")
     throw new Error("Sent or paid invoices cannot be edited");
 
+  // Resolve or create customer (same as create)
+  let customerId = input.customerId;
+  if (!customerId && input.customerName) {
+    const customer = await prisma.customer.create({
+      data: {
+        tenantId,
+        name: input.customerName,
+        company: input.customerCompany,
+        email: input.customerEmail || undefined,
+        whatsapp: input.customerWhatsapp,
+      },
+    });
+    customerId = customer.id;
+  }
+
   const subtotal = input.items.reduce(
     (sum, item) => sum + item.qty * item.unitPrice,
     0
@@ -169,7 +184,7 @@ export async function updateInvoice(
   const invoice = await prisma.invoice.update({
     where: { id: invoiceId },
     data: {
-      customerId: input.customerId,
+      customerId,
       issueDate: new Date(input.issueDate),
       dueDate: new Date(input.dueDate),
       subtotal,
