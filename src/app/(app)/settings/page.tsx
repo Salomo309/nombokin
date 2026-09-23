@@ -113,15 +113,29 @@ function SettingsContent() {
 
       (window as any).snap.pay(data.token, {
         onSuccess: async () => {
-          setSuccessMsg("Payment processed. Waiting for Midtrans confirmation...");
-          // Webhook memverifikasi & memperbarui status langganan, cek beberapa kali
-          let currentTier = "FREE";
-          for (let i = 0; i < 6; i++) {
-            await new Promise((r) => setTimeout(r, 5000));
-            currentTier = (await loadSettings()) ?? currentTier;
-            if (currentTier !== "FREE") break;
+          setSuccessMsg("Payment successful. Activating your plan...");
+          let activated = false;
+          for (let i = 0; i < 8; i++) {
+            await new Promise((r) => setTimeout(r, 3000));
+            try {
+              const res = await fetch("/api/billing/confirm", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ orderId: data.orderId }),
+              });
+              if (res.ok) {
+                const result = await res.json();
+                if (result.paid) {
+                  activated = true;
+                  break;
+                }
+              }
+            } catch (err) {
+              console.error(err);
+            }
           }
-          if (currentTier !== "FREE") {
+          const currentTier = (await loadSettings()) ?? "FREE";
+          if (activated || currentTier !== "FREE") {
             setSuccessMsg("Payment successful! Your plan has been activated.");
           } else {
             setSuccessMsg("Payment successful. Subscription status will be verified automatically.");

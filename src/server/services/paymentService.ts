@@ -77,6 +77,69 @@ export async function createPaymentLink(
   return snapResponse.redirect_url;
 }
 
+export async function handlePaidSubscriptionOrder(data: {
+  orderId: string;
+  transactionId: string;
+  grossAmount?: string;
+}): Promise<void> {
+  const { orderId, transactionId } = data;
+
+  // Format: SUB-{tier}-{M|Y}-{tenantId}-{token}
+  const parts = orderId.split("-");
+  const tier = parts[1] as "PRO" | "BUSINESS";
+  const intervalRaw = parts[2];
+  const tenantId = parts[3];
+
+  if (!tenantId || !tier || !intervalRaw) {
+    console.warn(`[Payment] Invalid subscription order_id format: ${orderId}`);
+    return;
+  }
+
+  const interval = intervalRaw === "Y" ? "YEARLY" : "MONTHLY";
+  const durationDays = interval === "MONTHLY" ? 30 : 365;
+  const currentPeriodEnd = new Date();
+  currentPeriodEnd.setDate(currentPeriodEnd.getDate() + durationDays);
+
+  await prisma.subscription.upsert({
+    where: { tenantId },
+    update: {
+      tier,
+      status: "ACTIVE",
+      currentPeriodEnd,
+      midtransSubscriptionId: transactionId,
+    },
+    create: {
+      tenantId,
+      tier,
+      status: "ACTIVE",
+      currentPeriodEnd,
+      midtransSubscriptionId: transactionId,
+    },
+  });
+
+  await prisma.payment.upsert({
+    where: { orderId },
+    update: {
+      status: "SUCCESS",
+      transactionId,
+    },
+    create: {
+      orderId,
+      tenantId,
+      type: "SUBSCRIPTION",
+      status: "SUCCESS",
+      amount: parseFloat(data.grossAmount ?? "0") || 0,
+      tier,
+      interval,
+      transactionId,
+      description: `Langganan ${tier} (${interval})`,
+    },
+  });
+
+  console.log(`[Payment] Tenant ${tenantId} upgraded to ${tier} (${interval}) until ${currentPeriodEnd.toISOString()}`);
+  await invalidatePaymentCaches(tenantId);
+}
+
 export async function processPaymentWebhook(payload: {
   order_id: string;
   transaction_status: string;
@@ -91,62 +154,11 @@ export async function processPaymentWebhook(payload: {
 
   // Handle subscription payments
   if (order_id.startsWith("SUB-")) {
-    // Format: SUB-{tier}-{M|Y}-{tenantId}-{token}
-    const parts = order_id.split("-");
-    const tier = parts[1] as "PRO" | "BUSINESS";
-    const intervalRaw = parts[2];
-    const tenantId = parts[3];
-
-    if (!tenantId || !tier || !intervalRaw) {
-      console.warn(`[Payment Webhook] Invalid subscription order_id format: ${order_id}`);
-      return;
-    }
-
-    const interval = intervalRaw === "Y" ? "YEARLY" : "MONTHLY";
-
-    const durationDays = interval === "MONTHLY" ? 30 : 365;
-    const currentPeriodEnd = new Date();
-    currentPeriodEnd.setDate(currentPeriodEnd.getDate() + durationDays);
-
-    await prisma.subscription.upsert({
-      where: { tenantId },
-      update: {
-        tier,
-        status: "ACTIVE",
-        currentPeriodEnd,
-        midtransSubscriptionId: transaction_id,
-      },
-      create: {
-        tenantId,
-        tier,
-        status: "ACTIVE",
-        currentPeriodEnd,
-        midtransSubscriptionId: transaction_id,
-      },
+    await handlePaidSubscriptionOrder({
+      orderId: order_id,
+      transactionId: transaction_id,
+      grossAmount: gross_amount,
     });
-
-    // Record successful subscription payment
-    await prisma.payment.upsert({
-      where: { orderId: order_id },
-      update: {
-        status: "SUCCESS",
-        transactionId: transaction_id,
-      },
-      create: {
-        orderId: order_id,
-        tenantId,
-        type: "SUBSCRIPTION",
-        status: "SUCCESS",
-        amount: parseFloat(gross_amount ?? "0") || 0,
-        tier,
-        interval,
-        transactionId: transaction_id,
-        description: `Langganan ${tier} (${interval})`,
-      },
-    });
-
-    console.log(`[Payment Webhook] Tenant ${tenantId} upgraded to ${tier} (${interval}) until ${currentPeriodEnd.toISOString()}`);
-    await invalidatePaymentCaches(tenantId);
     return;
   }
 
