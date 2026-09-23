@@ -22,7 +22,8 @@ interface DashboardStats {
   paidTotal: number;
   quotationCount: number;
   invoiceCountThisMonth: number;
-  invoiceLimit: number;
+  invoiceLimit: number | null;
+  tier: string;
   recentInvoices: Array<{
     id: string;
     number: string;
@@ -50,8 +51,10 @@ export default function DashboardPage() {
         ]);
 
         let quotaOverride: { used: number; limit: number } | null = null;
+        let planTier = "FREE";
         if (planRes.ok) {
           const plan = await planRes.json();
+          planTier = plan.tier ?? "FREE";
           if (plan.quota) {
             quotaOverride = plan.quota;
           }
@@ -88,7 +91,8 @@ export default function DashboardPage() {
             paidTotal: paid,
             quotationCount: quotations,
             invoiceCountThisMonth: quotaOverride?.used ?? countThisMonth,
-            invoiceLimit: quotaOverride?.limit ?? limit,
+            invoiceLimit: quotaOverride?.limit ?? (planTier === "FREE" ? limit : null),
+            tier: planTier,
             recentInvoices: list.slice(0, 5),
           });
         }
@@ -118,7 +122,7 @@ export default function DashboardPage() {
     );
   }
 
-  const limitPercent = stats
+  const limitPercent = stats && stats.invoiceLimit
     ? Math.min((stats.invoiceCountThisMonth / stats.invoiceLimit) * 100, 100)
     : 0;
 
@@ -212,13 +216,15 @@ export default function DashboardPage() {
             <CardContent className="space-y-2">
               <div className="flex justify-between items-baseline">
                 <span className="font-serif text-xl font-bold text-foreground tabular-nums">
-                  {stats?.invoiceCountThisMonth || 0} / {stats?.invoiceLimit || 5}
+                  {stats?.invoiceCountThisMonth || 0} / {stats?.invoiceLimit ?? "∞"}
                 </span>
                 <span className="text-[10px] font-semibold text-muted-foreground">
-                  {Math.round(limitPercent)}%
+                  {stats?.invoiceLimit == null ? "Tanpa batas" : `${Math.round(limitPercent)}%`}
                 </span>
               </div>
-              <Progress value={limitPercent} className="h-1.5" />
+              {stats?.invoiceLimit != null && (
+                <Progress value={limitPercent} className="h-1.5" />
+              )}
             </CardContent>
           </Card>
         </div>
