@@ -7,3 +7,44 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# Nombokin — Agent Notes
+
+Next.js 16 full-stack invoice & quotation app with Midtrans Snap payments (QRIS/VA).
+No separate BE/FE: UI in `src/app` + `src/components`; backend in `src/app/api/**`, `src/server`, `src/lib`; DB via `prisma/schema.prisma` (PostgreSQL) + Redis cache.
+
+## Commands
+
+- Dev: `npm run dev` (port 3000, needs local Postgres + Redis + `.env`)
+- Prod build: `npm run build`, then `npm run start`
+- DB: `npm run db:push` (sync schema), `npm run db:studio`, `npm run db:seed`
+- Typecheck: `npx tsc --noEmit` (must pass before deploy/commit)
+
+## Conventions (strict)
+
+- No `alert()`/`confirm()` — use toast (`src/components/ui/toast.tsx`) + confirm-dialog.
+- Product success/error messages in English; static UI text and `console.*` in Indonesian.
+- Next 16 uses `src/proxy.ts` for route guarding (not `middleware.ts`); route group `(app)` for authed pages.
+- **Every paid-tier feature MUST be enforced server-side, never UI-only.** Gating points live in: `src/server/services/invoiceService.ts` (quota), `payment-link` + `upload/logo` routes, `updateCompanyAction`, PDF template (`tier === "FREE"` → watermark).
+- Commit style: `feat:` / `fix:` one concern per commit; split shared-file hunks instead of mixing.
+
+## Key behaviors (don't break)
+
+- Auth: 60-min JWT access + 7-day single rotating refresh token (new login kicks old session on refresh). Cookie `secure` follows `NEXT_PUBLIC_APP_URL` scheme — required for HTTP deployments.
+- Subscription activation has TWO idempotent paths sharing `handlePaidSubscriptionOrder()`: Midtrans webhook (`/api/midtrans/webhook`, needs public HTTPS URL configured in dashboard) and fallback `POST /api/billing/confirm` (polls Midtrans status; used by settings page after Snap success).
+- FREE quota = 5 invoices/month counted at creation (including deleted). Invoice edit only when DRAFT. Payment links for INVOICE type only.
+- Tiers: FREE / PRO / BUSINESS. BUSINESS multi-user is NOT implemented yet (marketing copy only).
+
+## Deployment (production VPS, ask owner for IPs/credentials — never commit secrets)
+
+1. Tarball excluding `node_modules .next .git .env* uploads public/uploads .opencode`.
+2. Upload to app dir, extract, `npm run build`, `pm2 restart nombokin` (port 3000 behind nginx :80).
+3. Smoke test: `/login` → 200. Prisma CLI needs `DATABASE_URL` in `.env` (not `.env.local`).
+
+## Windows/PowerShell quirks
+
+- Avoid `\"` inside strings; use single-quoted strings + `''`.
+- curl JSON bodies via file: `--data-binary "@file"` (PowerShell mangles inline JSON).
+- Pipe SQL files to `psql -f` / stdin; never inline multi-line SQL.
+- `Out-File` wraps long lines — use `-Width 4096`+ or generate files via node (UTF-8).
+- `git apply` needs `git -c core.autocrlf=false` or context matching fails.
