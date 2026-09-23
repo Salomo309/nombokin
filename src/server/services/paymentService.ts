@@ -22,6 +22,7 @@ export async function createPaymentLink(
   });
 
   if (!invoice) throw new Error("Invoice not found");
+  if (invoice.type !== "INVOICE") throw new Error("Only invoices can be paid online");
   if (invoice.status === "PAID") throw new Error("Invoice is already paid");
   if (invoice.status === "CANCELLED") throw new Error("Invoice is cancelled");
 
