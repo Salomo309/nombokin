@@ -3,10 +3,18 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { teamAcceptSchema } from "@/lib/validators";
 import { getTenantTier } from "@/lib/guards";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { MAX_TEAM_MEMBERS } from "@/lib/team";
 
 // POST /api/team/accept — publik: tukar token undangan jadi akun anggota
 export async function POST(request: NextRequest) {
+  const limited = await checkRateLimit(request, {
+    key: "team-accept",
+    limit: 10,
+    windowSeconds: 60,
+  });
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const parsed = teamAcceptSchema.safeParse(body);

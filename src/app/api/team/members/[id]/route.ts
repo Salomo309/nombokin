@@ -5,9 +5,7 @@ import { teamRoleSchema } from "@/lib/validators";
 
 type Params = { params: Promise<{ id: string }> };
 
-async function ownerCount(tenantId: string): Promise<number> {
-  return prisma.user.count({ where: { tenantId, role: "OWNER" } });
-}
+class LastOwnerError extends Error {}
 
 // PATCH /api/team/members/[id] — OWNER ubah role anggota (dengan proteksi owner terakhir)
 export async function PATCH(request: NextRequest, { params }: Params) {
@@ -21,29 +19,45 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
 
-  const target = await prisma.user.findFirst({
-    where: { id, tenantId: auth.tenantId },
-  });
-  if (!target) {
-    return NextResponse.json({ error: "Member not found" }, { status: 404 });
-  }
+  try {
+    const updated = await prisma.$transaction(
+      async (tx) => {
+        const target = await tx.user.findFirst({
+          where: { id, tenantId: auth.tenantId },
+        });
+        if (!target) return null;
 
-  if (target.role === "OWNER" && parsed.data.role !== "OWNER") {
-    if ((await ownerCount(auth.tenantId)) <= 1) {
+        if (target.role === "OWNER" && parsed.data.role !== "OWNER") {
+          const owners = await tx.user.count({
+            where: { tenantId: auth.tenantId, role: "OWNER" },
+          });
+          if (owners <= 1) throw new LastOwnerError();
+        }
+
+        return tx.user.update({
+          where: { id },
+          data: { role: parsed.data.role },
+          select: { id: true, name: true, email: true, role: true },
+        });
+      },
+      { isolationLevel: "Serializable" }
+    );
+
+    if (!updated) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(updated);
+  } catch (err) {
+    if (err instanceof LastOwnerError) {
       return NextResponse.json(
         { error: "Cannot demote the last owner" },
         { status: 400 }
       );
     }
+    // Abort serializable konkuren → anggap gagal aman, minta coba lagi
+    return NextResponse.json({ error: "Failed to update role" }, { status: 500 });
   }
-
-  const updated = await prisma.user.update({
-    where: { id },
-    data: { role: parsed.data.role },
-    select: { id: true, name: true, email: true, role: true },
-  });
-
-  return NextResponse.json(updated);
 }
 
 // DELETE /api/team/members/[id] — OWNER hapus anggota (tidak boleh diri sendiri / owner terakhir)
@@ -60,20 +74,39 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     );
   }
 
-  const target = await prisma.user.findFirst({
-    where: { id, tenantId: auth.tenantId },
-  });
-  if (!target) {
-    return NextResponse.json({ error: "Member not found" }, { status: 404 });
-  }
+  try {
+    const deleted = await prisma.$transaction(
+      async (tx) => {
+        const target = await tx.user.findFirst({
+          where: { id, tenantId: auth.tenantId },
+        });
+        if (!target) return false;
 
-  if (target.role === "OWNER" && (await ownerCount(auth.tenantId)) <= 1) {
-    return NextResponse.json(
-      { error: "Cannot remove the last owner" },
-      { status: 400 }
+        if (target.role === "OWNER") {
+          const owners = await tx.user.count({
+            where: { tenantId: auth.tenantId, role: "OWNER" },
+          });
+          if (owners <= 1) throw new LastOwnerError();
+        }
+
+        await tx.user.delete({ where: { id } });
+        return true;
+      },
+      { isolationLevel: "Serializable" }
     );
-  }
 
-  await prisma.user.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+    if (!deleted) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    if (err instanceof LastOwnerError) {
+      return NextResponse.json(
+        { error: "Cannot remove the last owner" },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json({ error: "Failed to remove member" }, { status: 500 });
+  }
 }
