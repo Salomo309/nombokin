@@ -100,6 +100,20 @@ export default function InvoicesPage() {
             <Button type="submit" variant="outline" size="sm" className="h-10 px-3 shrink-0">
               Cari
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-10 px-3 shrink-0"
+              onClick={() => {
+                setPage(1);
+                loadInvoices();
+              }}
+              disabled={loading}
+              title="Muat ulang daftar"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
           </form>
         </div>
 

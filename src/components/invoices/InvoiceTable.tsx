@@ -188,12 +188,20 @@ export function InvoiceTable({ invoices, type, onRefresh }: InvoiceTableProps) {
                   dot: "bg-stone-400",
                 };
 
+                const detailHref =
+                  type === "INVOICE" ? `/invoices/${inv.id}` : `/quotations/${inv.id}`;
+
                 return (
                   <tr
                     key={inv.id}
-                    className="hover:bg-secondary/20 transition-colors text-foreground font-medium"
+                    onDoubleClick={() => router.push(detailHref)}
+                    title="Klik dua kali untuk melihat detail"
+                    className="hover:bg-secondary/20 transition-colors text-foreground font-medium cursor-pointer"
                   >
-                    <td className="py-3.5 px-4">
+                    <td
+                      className="py-3.5 px-4"
+                      onDoubleClick={(e) => e.stopPropagation()}
+                    >
                       <Checkbox
                         checked={selectedIds.has(inv.id)}
                         onCheckedChange={() => toggleRow(inv.id)}
@@ -234,7 +242,10 @@ export function InvoiceTable({ invoices, type, onRefresh }: InvoiceTableProps) {
                         {STATUS_LABELS[inv.status] || inv.status}
                       </Badge>
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td
+                      className="py-3.5 px-4"
+                      onDoubleClick={(e) => e.stopPropagation()}
+                    >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
