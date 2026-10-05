@@ -141,62 +141,46 @@ export async function handlePaidSubscriptionOrder(data: {
   await invalidatePaymentCaches(tenantId);
 }
 
-export async function processPaymentWebhook(payload: {
-  order_id: string;
-  transaction_status: string;
-  fraud_status?: string;
-  transaction_id: string;
-  gross_amount?: string;
-}): Promise<void> {
-  const { order_id, transaction_status, fraud_status, transaction_id, gross_amount } = payload;
-
-  const isPaid = isPaymentSuccessful(transaction_status, fraud_status);
-  if (!isPaid) return;
-
-  // Handle subscription payments
-  if (order_id.startsWith("SUB-")) {
-    await handlePaidSubscriptionOrder({
-      orderId: order_id,
-      transactionId: transaction_id,
-      grossAmount: gross_amount,
-    });
-    return;
-  }
+export async function handlePaidInvoiceOrder(data: {
+  orderId: string;
+  transactionId: string;
+}): Promise<{ updated: boolean }> {
+  const { orderId, transactionId } = data;
 
   // Find invoice by midtrans order ID
   const invoice = await prisma.invoice.findFirst({
-    where: { midtransOrderId: order_id, isDeleted: false },
+    where: { midtransOrderId: orderId, isDeleted: false },
     include: { customer: true, tenant: true },
   });
 
   if (!invoice) {
-    console.warn(`[Payment] Invoice not found for order_id: ${order_id}`);
-    return;
+    console.warn(`[Payment] Invoice not found for order_id: ${orderId}`);
+    return { updated: false };
   }
 
   // Record successful invoice payment
   await prisma.payment.upsert({
-    where: { orderId: order_id },
+    where: { orderId },
     update: {
       status: "SUCCESS",
-      transactionId: transaction_id,
+      transactionId,
       amount: parseFloat(invoice.total.toString()),
     },
     create: {
-      orderId: order_id,
+      orderId,
       tenantId: invoice.tenantId,
       invoiceId: invoice.id,
       type: "INVOICE",
       status: "SUCCESS",
       amount: parseFloat(invoice.total.toString()),
-      transactionId: transaction_id,
+      transactionId,
       description: `Pembayaran ${invoice.number}`,
     },
   });
 
   if (invoice.status === "PAID") {
     console.log(`[Payment] Invoice ${invoice.number} already paid — skipping`);
-    return;
+    return { updated: false };
   }
 
   // Mark as paid
@@ -225,4 +209,34 @@ export async function processPaymentWebhook(payload: {
       tenantName: invoice.tenant.name,
     });
   }
+
+  return { updated: true };
+}
+
+export async function processPaymentWebhook(payload: {
+  order_id: string;
+  transaction_status: string;
+  fraud_status?: string;
+  transaction_id: string;
+  gross_amount?: string;
+}): Promise<void> {
+  const { order_id, transaction_status, fraud_status, transaction_id, gross_amount } = payload;
+
+  const isPaid = isPaymentSuccessful(transaction_status, fraud_status);
+  if (!isPaid) return;
+
+  // Handle subscription payments
+  if (order_id.startsWith("SUB-")) {
+    await handlePaidSubscriptionOrder({
+      orderId: order_id,
+      transactionId: transaction_id,
+      grossAmount: gross_amount,
+    });
+    return;
+  }
+
+  await handlePaidInvoiceOrder({
+    orderId: order_id,
+    transactionId: transaction_id,
+  });
 }

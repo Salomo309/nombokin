@@ -73,6 +73,7 @@ export default function InvoiceDetailPage() {
   const [sending, setSending] = useState(false);
   const [reminding, setReminding] = useState(false);
   const [generatingLink, setGeneratingLink] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -117,6 +118,41 @@ export default function InvoiceDetailPage() {
       console.error(err);
     } finally {
       setGeneratingLink(false);
+    }
+  };
+
+  const handleCheckStatus = async () => {
+    if (!invoice) return;
+    setCheckingStatus(true);
+    try {
+      const res = await fetch(`/api/invoices/${id}/check-status`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok && data.paid) {
+        toast({
+          variant: "success",
+          title: "Payment verified! Invoice marked as paid.",
+        });
+        await loadInvoice();
+      } else if (res.ok) {
+        toast({
+          title: `Belum lunas (status: ${data.status || "pending"}). Coba lagi setelah pelanggan membayar.`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: data.error || "Failed to check payment status",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({
+        variant: "destructive",
+        title: "Server connection error",
+      });
+    } finally {
+      setCheckingStatus(false);
     }
   };
 
@@ -371,6 +407,17 @@ export default function InvoiceDetailPage() {
                       </a>
                     </div>
                     
+                    {!isPaid && (
+                      <Button
+                        onClick={handleCheckStatus}
+                        disabled={checkingStatus}
+                        variant="outline"
+                        className="w-full gap-2 text-xs"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${checkingStatus ? "animate-spin" : ""}`} /> {checkingStatus ? "Mengecek..." : "Cek Status Bayar"}
+                      </Button>
+                    )}
+
                     {!isPaid && (
                       <Button
                         onClick={handleRemind}
