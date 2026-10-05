@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthFromRequest } from "@/lib/auth";
+import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { redisGetJson, redisSetJson } from "@/server/redis";
 
@@ -7,11 +7,8 @@ const CACHE_KEY = "nombokin:admin:dashboard";
 const CACHE_TTL = 60; // detik
 
 export async function GET(request: NextRequest) {
-  const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  if (auth.role !== "ADMIN") {
-    return NextResponse.json({ error: "Access denied" }, { status: 403 });
-  }
+  const auth = await requireRole(request, ["ADMIN"]);
+  if (auth instanceof NextResponse) return auth;
 
   const cached = await redisGetJson<Record<string, unknown>>(CACHE_KEY);
   if (cached) return NextResponse.json(cached);

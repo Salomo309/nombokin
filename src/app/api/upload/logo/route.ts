@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-import { getAuthFromRequest } from "@/lib/auth";
+import { requireTier } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
@@ -15,21 +15,11 @@ const ALLOWED_TYPES: Record<string, string> = {
 };
 
 export async function POST(request: NextRequest) {
-  const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  const gate = await requireTier(request, "PRO");
+  if (gate instanceof NextResponse) return gate;
+  const { auth } = gate;
 
   try {
-    const subscription = await prisma.subscription.findUnique({
-      where: { tenantId: auth.tenantId },
-    });
-
-    if (!subscription || subscription.tier === "FREE") {
-      return NextResponse.json(
-        { error: "Custom logo requires a PRO subscription" },
-        { status: 403 }
-      );
-    }
-
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 

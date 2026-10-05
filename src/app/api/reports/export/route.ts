@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthFromRequest } from "@/lib/auth";
+import { requireTier } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 
 function esc(value: unknown): string {
@@ -13,19 +13,9 @@ function day(d: Date | string | null): string {
 
 // GET /api/reports/export?type=invoices|payments — unduh CSV (BISNIS only)
 export async function GET(request: NextRequest) {
-  const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-
-  const subscription = await prisma.subscription.findUnique({
-    where: { tenantId: auth.tenantId },
-  });
-
-  if (!subscription || subscription.tier !== "BUSINESS") {
-    return NextResponse.json(
-      { error: "Reports require a BUSINESS subscription" },
-      { status: 403 }
-    );
-  }
+  const gate = await requireTier(request, "BUSINESS");
+  if (gate instanceof NextResponse) return gate;
+  const { auth } = gate;
 
   const type = request.nextUrl.searchParams.get("type") ?? "invoices";
   const stamp = new Date().toISOString().slice(0, 10);

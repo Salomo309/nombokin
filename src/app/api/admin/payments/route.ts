@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthFromRequest } from "@/lib/auth";
+import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
-  const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  if (auth.role !== "ADMIN") {
-    return NextResponse.json({ error: "Access denied" }, { status: 403 });
-  }
+  const auth = await requireRole(request, ["ADMIN"]);
+  if (auth instanceof NextResponse) return auth;
 
   const url = new URL(request.url);
   const status = url.searchParams.get("status");

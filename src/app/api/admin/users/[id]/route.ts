@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthFromRequest } from "@/lib/auth";
+import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
-  const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  if (auth.role !== "ADMIN") {
-    return NextResponse.json({ error: "Access denied" }, { status: 403 });
-  }
+  const auth = await requireRole(request, ["ADMIN"]);
+  if (auth instanceof NextResponse) return auth;
 
   const { id } = await context.params;
 
@@ -65,11 +62,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 }
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
-  const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  if (auth.role !== "ADMIN") {
-    return NextResponse.json({ error: "Access denied" }, { status: 403 });
-  }
+  const auth = await requireRole(request, ["ADMIN"]);
+  if (auth instanceof NextResponse) return auth;
 
   const { id } = await context.params;
 

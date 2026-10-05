@@ -1,6 +1,7 @@
 "use server";
 
 import { getAuthFromCookies } from "@/lib/auth";
+import { getTenantTier } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
@@ -37,10 +38,7 @@ export async function updateCompanyAction(data: {
   if (!data.name) throw new Error("Business name is required");
 
   // Custom letterhead & watermark adalah fitur berbayar — paksa default untuk FREE
-  const subscription = await prisma.subscription.findUnique({
-    where: { tenantId: auth.tenantId },
-  });
-  const isPaidTier = !!subscription && subscription.tier !== "FREE";
+  const isPaidTier = (await getTenantTier(auth.tenantId)) !== "FREE";
 
   await prisma.tenant.update({
     where: { id: auth.tenantId },

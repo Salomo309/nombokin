@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthFromRequest } from "@/lib/auth";
+import { requireTier } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 
 function monthKey(d: Date): string {
@@ -15,19 +15,9 @@ function monthLabel(key: string): string {
 
 // GET /api/reports/summary — rekap pendapatan, per klien & aging piutang (BISNIS only)
 export async function GET(request: NextRequest) {
-  const auth = await getAuthFromRequest(request);
-  if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-
-  const subscription = await prisma.subscription.findUnique({
-    where: { tenantId: auth.tenantId },
-  });
-
-  if (!subscription || subscription.tier !== "BUSINESS") {
-    return NextResponse.json(
-      { error: "Reports require a BUSINESS subscription" },
-      { status: 403 }
-    );
-  }
+  const gate = await requireTier(request, "BUSINESS");
+  if (gate instanceof NextResponse) return gate;
+  const { auth } = gate;
 
   const invoices = await prisma.invoice.findMany({
     where: { tenantId: auth.tenantId, type: "INVOICE", isDeleted: false },
