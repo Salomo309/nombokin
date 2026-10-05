@@ -28,6 +28,18 @@ export async function proxy(request: NextRequest) {
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
     }
+
+    // Anggota (MEMBER) tidak boleh membuka tab langganan:
+    // redirect di sini (mekanisme Proxy terbukti 307 di app ini).
+    if (
+      user.role === "MEMBER" &&
+      pathname === "/settings" &&
+      request.nextUrl.searchParams.get("tab") === "langganan"
+    ) {
+      const profilUrl = new URL("/settings", request.url);
+      profilUrl.searchParams.set("tab", "profil");
+      return NextResponse.redirect(profilUrl);
+    }
   }
 
   if (isAuthPage) {
