@@ -4,10 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft,
   Edit,
-  Download,
-  MessageSquare,
   RefreshCw,
   CreditCard,
   CheckCircle2,
@@ -22,43 +19,24 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
-import { PDFPreview } from "@/components/invoices/PDFPreview";
-import { InvoiceTimeline } from "@/components/invoices/InvoiceTimeline";
+import {
+  DocumentData,
+  DocumentError,
+  DocumentHeader,
+  DocumentLoading,
+  DocumentPreview,
+  ShareCard,
+  TimelineCard,
+} from "@/components/invoices/DocumentDetail";
 import { formatRupiah, STATUS_LABELS } from "@/lib/utils";
 import { softDeleteInvoiceAction, duplicateInvoiceAction } from "@/server/actions/invoice";
 
-interface InvoiceDetail {
-  id: string;
-  number: string;
-  type: "INVOICE" | "QUOTATION";
-  status: string;
-  issueDate: string;
-  dueDate: string;
+interface InvoiceDetail extends DocumentData {
   subtotal: number;
-  discountPercent: number;
-  taxPercent: number;
   total: number;
-  notes?: string | null;
-  terms?: string | null;
-  items: any[];
-  shareToken: string;
   midtransPaymentUrl?: string | null;
-  createdAt: string;
-  sentAt?: string | null;
-  paidAt?: string | null;
-  customer?: {
-    name: string;
-    company?: string | null;
-    email?: string | null;
-    whatsapp?: string | null;
-  } | null;
-  tenant: {
-    name: string;
+  tenant: DocumentData["tenant"] & {
     logoUrl?: string | null;
-    letterheadSignature?: string | null;
-    subscription: {
-      tier: string;
-    };
   };
 }
 
@@ -190,7 +168,10 @@ export default function InvoiceDetailPage() {
         if (data.waLink) {
           window.open(data.waLink, "_blank");
         } else {
-          toast({ variant: "success", title: "Reminder email sent to the customer!" });
+          toast({
+            variant: "success",
+            title: "Reminder email sent to the customer!",
+          });
         }
       }
     } catch (err) {
@@ -266,267 +247,152 @@ export default function InvoiceDetailPage() {
   };
 
   if (loading) {
-    return (
-
-        <div className="flex h-64 items-center justify-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-        </div>
-  
-    );
+    return <DocumentLoading />;
   }
 
   if (error || !invoice) {
-    return (
-
-        <div className="flex justify-center items-center h-64">
-          <Card className="max-w-md w-full border-border">
-            <CardHeader className="text-center">
-              <CardTitle>Something went wrong</CardTitle>
-              <CardDescription>{error || "Invoice not found"}</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-  
-    );
+    return <DocumentError message={error || "Invoice not found"} />;
   }
 
   const isDraft = invoice.status === "DRAFT";
   const isPaid = invoice.status === "PAID";
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const publicShareLink = `${appUrl}/i/${invoice.shareToken}`;
 
   return (
     <div className="space-y-6">
-        {/* Top Header Actions Bar */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/80 pb-4">
-          <div className="flex items-center gap-3">
-            <Button asChild variant="ghost" size="icon" className="h-8 w-8">
-              <Link href="/invoices">
-                <ArrowLeft className="h-4.5 w-4.5" />
-              </Link>
-            </Button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="font-serif text-xl font-bold text-foreground">
-                  Invoice {invoice.number}
-                </h2>
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Tanggal Terbit: {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(invoice.issueDate))}
-              </p>
-            </div>
-          </div>
+      <DocumentHeader
+        backHref="/invoices"
+        title={`Invoice ${invoice.number}`}
+        issueDate={invoice.issueDate}
+      >
+        <Select
+          value={invoice.status}
+          onValueChange={handleStatusChange}
+          disabled={changingStatus}
+        >
+          <SelectTrigger className="h-9 w-40 text-xs" aria-label="Status">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.keys(STATUS_LABELS).map((status) => (
+              <SelectItem key={status} value={status}>
+                {STATUS_LABELS[status]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {isDraft && (
+          <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
+            <Link href={`/invoices/${invoice.id}/edit`}>
+              <Edit className="h-4 w-4" /> Edit Draf
+            </Link>
+          </Button>
+        )}
+        <Button onClick={handleDuplicate} variant="outline" size="sm" className="gap-1.5 text-xs">
+          <Copy className="h-4 w-4" /> Duplikat
+        </Button>
+        {!isPaid && (
+          <Button onClick={handleDelete} variant="ghost" size="sm" className="gap-1.5 text-xs text-destructive hover:bg-red-50/50">
+            <Trash2 className="h-4 w-4" /> Hapus
+          </Button>
+        )}
+      </DocumentHeader>
 
-          <div className="flex flex-wrap gap-2">
-            <Select
-              value={invoice.status}
-              onValueChange={handleStatusChange}
-              disabled={changingStatus}
-            >
-              <SelectTrigger className="h-9 w-40 text-xs" aria-label="Status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.keys(STATUS_LABELS).map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {STATUS_LABELS[status]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {isDraft && (
-              <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
-                <Link href={`/invoices/${invoice.id}/edit`}>
-                  <Edit className="h-4 w-4" /> Edit Draf
-                </Link>
-              </Button>
-            )}
-            <Button onClick={handleDuplicate} variant="outline" size="sm" className="gap-1.5 text-xs">
-              <Copy className="h-4 w-4" /> Duplikat
-            </Button>
-            {!isPaid && (
-              <Button onClick={handleDelete} variant="ghost" size="sm" className="gap-1.5 text-xs text-destructive hover:bg-red-50/50">
-                <Trash2 className="h-4 w-4" /> Hapus
-              </Button>
-            )}
-          </div>
-        </div>
+      {/* 2-Column Detail Layout */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
+        <DocumentPreview type="INVOICE" doc={invoice} />
 
-        {/* 2-Column Detail Layout */}
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
-          
-          {/* LEFT: HTML Paper Sheet Preview */}
-          <div className="lg:col-span-8 flex justify-center w-full">
-            <PDFPreview
-              type="INVOICE"
-              number={invoice.number}
-              tenantName={invoice.tenant.name}
-              letterheadSignature={invoice.tenant.letterheadSignature || ""}
-              customerName={invoice.customer?.name}
-              customerCompany={invoice.customer?.company || ""}
-              customerEmail={invoice.customer?.email || ""}
-              customerWhatsapp={invoice.customer?.whatsapp || ""}
-              issueDate={invoice.issueDate}
-              dueDate={invoice.dueDate}
-              items={invoice.items as any}
-              discountPercent={invoice.discountPercent}
-              taxPercent={invoice.taxPercent}
-              notes={invoice.notes || ""}
-              terms={invoice.terms || ""}
-              status={invoice.status}
-              isWatermarked={invoice.tenant.subscription?.tier === "FREE"}
-            />
-          </div>
-
-          {/* RIGHT: Actions & Info sidebar */}
-          <div className="lg:col-span-4 space-y-6">
-            
-            {/* Payment Link Card */}
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-sm">Link Pembayaran</CardTitle>
-                <CardDescription className="text-[11px] mt-0.5">
-                  Gunakan QRIS instan dari Midtrans Snap
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {invoice.midtransPaymentUrl ? (
-                  <div className="space-y-3">
-                    <div className="rounded-lg bg-orange-50 border border-orange-200/50 p-3 flex items-center justify-between text-xs text-primary font-semibold">
-                      <span className="flex items-center gap-1.5">
-                        <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                        QRIS / VA Aktif
-                      </span>
-                      <a
-                        href={invoice.midtransPaymentUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-0.5 hover:underline text-primary"
-                      >
-                        Lihat <ChevronRight className="h-3.5 w-3.5" />
-                      </a>
-                    </div>
-                    
-                    {!isPaid && (
-                      <Button
-                        onClick={handleCheckStatus}
-                        disabled={checkingStatus}
-                        variant="outline"
-                        className="w-full gap-2 text-xs"
-                      >
-                        <RefreshCw className={`h-4 w-4 ${checkingStatus ? "animate-spin" : ""}`} /> {checkingStatus ? "Mengecek..." : "Cek Status Bayar"}
-                      </Button>
-                    )}
-
-                    {!isPaid && (
-                      <Button
-                        onClick={handleRemind}
-                        disabled={reminding}
-                        variant="outline"
-                        className="w-full gap-2 text-xs"
-                      >
-                        <BellRing className="h-4 w-4" /> {reminding ? "Mengirim..." : "Kirim Pengingat Ulang"}
-                      </Button>
-                    )}
-                  </div>
-                ) : invoice.tenant.subscription?.tier === "FREE" ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 rounded-lg bg-secondary/40 border border-border/60 p-3.5 text-xs text-muted-foreground leading-normal">
-                      <AlertCircle className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
-                      <span>Link bayar QRIS/VA khusus paket PRO ke atas.</span>
-                    </div>
-                    <Button asChild variant="outline" className="w-full gap-2 text-xs">
-                      <Link href="/settings?tab=langganan">
-                        <CreditCard className="h-4 w-4" /> Upgrade ke PRO
-                      </Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 rounded-lg bg-secondary/40 border border-border/60 p-3.5 text-xs text-muted-foreground leading-normal">
-                      <AlertCircle className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
-                      <span>Belum ada link bayar online. Klik tombol untuk membuat.</span>
-                    </div>
-                    <Button
-                      onClick={handleGeneratePaymentLink}
-                      disabled={generatingLink}
-                      className="w-full gap-2 text-xs shadow-xs"
+        {/* RIGHT: Actions & Info sidebar */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* Payment Link Card */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-sm">Link Pembayaran</CardTitle>
+              <CardDescription className="text-[11px] mt-0.5">
+                Gunakan QRIS instan dari Midtrans Snap
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {invoice.midtransPaymentUrl ? (
+                <div className="space-y-3">
+                  <div className="rounded-lg bg-orange-50 border border-orange-200/50 p-3 flex items-center justify-between text-xs text-primary font-semibold">
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                      QRIS / VA Aktif
+                    </span>
+                    <a
+                      href={invoice.midtransPaymentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-0.5 hover:underline text-primary"
                     >
-                      <CreditCard className="h-4 w-4" />
-                      {generatingLink ? "Membuat..." : "Buat Link QRIS Instan"}
-                    </Button>
+                      Lihat <ChevronRight className="h-3.5 w-3.5" />
+                    </a>
                   </div>
-                )}
-              </CardContent>
-            </Card>
 
-            {/* Quick Share Buttons */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Bagikan Invoice</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 pt-2">
-                {/* Share WhatsApp */}
-                <Button
-                  onClick={handleSendWA}
-                  disabled={sending}
-                  className="w-full gap-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  <MessageSquare className="h-4.5 w-4.5" />
-                  Kirim via WhatsApp
-                </Button>
-
-                {/* Direct PDF Download */}
-                <Button asChild variant="outline" className="w-full gap-2 text-xs">
-                  <a href={`/api/invoices/${invoice.id}/pdf`} download>
-                    <Download className="h-4.5 w-4.5" />
-                    Unduh PDF Resmi
-                  </a>
-                </Button>
-
-                {/* Copy public link */}
-                <div className="pt-2">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-1.5">
-                    Tautan Publik Klien
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="text"
-                      readOnly
-                      value={publicShareLink}
-                      className="flex-1 rounded-md border border-border bg-secondary/30 px-2 py-1 text-[11px] text-muted-foreground focus:outline-none focus:ring-0"
-                    />
+                  {!isPaid && (
                     <Button
+                      onClick={handleCheckStatus}
+                      disabled={checkingStatus}
                       variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => {
-                        navigator.clipboard.writeText(publicShareLink);
-                        toast({ variant: "success", title: "Link copied successfully!" });
-                      }}
+                      className="w-full gap-2 text-xs"
                     >
-                      <Copy className="h-3 w-3" />
+                      <RefreshCw className={`h-4 w-4 ${checkingStatus ? "animate-spin" : ""}`} /> {checkingStatus ? "Mengecek..." : "Cek Status Bayar"}
                     </Button>
-                  </div>
+                  )}
+
+                  {!isPaid && (
+                    <Button
+                      onClick={handleRemind}
+                      disabled={reminding}
+                      variant="outline"
+                      className="w-full gap-2 text-xs"
+                    >
+                      <BellRing className="h-4 w-4" /> {reminding ? "Mengirim..." : "Kirim Pengingat Ulang"}
+                    </Button>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+              ) : invoice.tenant.subscription?.tier === "FREE" ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 rounded-lg bg-secondary/40 border border-border/60 p-3.5 text-xs text-muted-foreground leading-normal">
+                    <AlertCircle className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
+                    <span>Link bayar QRIS/VA khusus paket PRO ke atas.</span>
+                  </div>
+                  <Button asChild variant="outline" className="w-full gap-2 text-xs">
+                    <Link href="/settings?tab=langganan">
+                      <CreditCard className="h-4 w-4" /> Upgrade ke PRO
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 rounded-lg bg-secondary/40 border border-border/60 p-3.5 text-xs text-muted-foreground leading-normal">
+                    <AlertCircle className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
+                    <span>Belum ada link bayar online. Klik tombol untuk membuat.</span>
+                  </div>
+                  <Button
+                    onClick={handleGeneratePaymentLink}
+                    disabled={generatingLink}
+                    className="w-full gap-2 text-xs shadow-xs"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    {generatingLink ? "Membuat..." : "Buat Link QRIS Instan"}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-            {/* Status Timeline */}
-            <Card>
-              <CardContent className="pt-6">
-                <InvoiceTimeline
-                  status={invoice.status}
-                  createdAt={invoice.createdAt}
-                  sentAt={invoice.sentAt}
-                  paidAt={invoice.paidAt}
-                />
-              </CardContent>
-            </Card>
+          <ShareCard
+            title="Bagikan Invoice"
+            docId={invoice.id}
+            shareToken={invoice.shareToken}
+            sending={sending}
+            onSendWA={handleSendWA}
+          />
 
-          </div>
+          <TimelineCard doc={invoice} />
         </div>
       </div>
-
+    </div>
   );
 }
