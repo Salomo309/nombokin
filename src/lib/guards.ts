@@ -10,6 +10,11 @@ export type Tier = "FREE" | "PRO" | "BUSINESS";
 
 const TIER_RANK: Record<Tier, number> = { FREE: 0, PRO: 1, BUSINESS: 2 };
 
+// Bandingkan tier tenant dengan minimum. 0 = sama, >0 = di atas, <0 = di bawah.
+export function compareTier(tier: Tier, minTier: Tier): number {
+  return TIER_RANK[tier] - TIER_RANK[minTier];
+}
+
 export interface GatePass {
   auth: JWTPayload;
   tier: Tier;
