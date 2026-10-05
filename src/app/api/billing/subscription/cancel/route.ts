@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthFromRequest } from "@/lib/auth";
+import { requireRole } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   const auth = await getAuthFromRequest(request);
   if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+  const roleGate = await requireRole(request, ["OWNER", "ADMIN"]);
+  if (roleGate instanceof NextResponse) return roleGate;
 
   try {
     const body = await request.json();

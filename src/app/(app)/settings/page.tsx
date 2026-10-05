@@ -2,13 +2,14 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { User, Building, CreditCard, Sparkles, Upload, Loader2, Check, Wallet } from "lucide-react";
+import { User, Building, CreditCard, Sparkles, Upload, Loader2, Check, Wallet, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateProfileAction, updateCompanyAction } from "@/server/actions/settings";
 import { PaymentMethodsManager } from "@/components/settings/PaymentMethodsManager";
+import { TeamManager } from "@/components/settings/TeamManager";
 
 function SettingsContent() {
   const searchParams = useSearchParams();
@@ -17,6 +18,8 @@ function SettingsContent() {
   const [activeTab, setActiveTab] = useState(defaultTab);
 
   // User states
+  const [userId, setUserId] = useState("");
+  const [userRole, setUserRole] = useState("OWNER");
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
 
@@ -51,6 +54,8 @@ function SettingsContent() {
       const res = await fetch("/api/auth/me");
       if (res.ok) {
         const data = await res.json();
+        setUserId(data.id);
+        setUserRole(data.role ?? "OWNER");
         setUserName(data.name);
         setUserEmail(data.email);
         setTenantName(data.tenant.name);
@@ -323,8 +328,13 @@ function SettingsContent() {
             <TabsTrigger value="perusahaan" className="gap-1.5">
               <Building className="h-4 w-4" /> Perusahaan & Branding
             </TabsTrigger>
-            <TabsTrigger value="langganan" className="gap-1.5">
-              <CreditCard className="h-4 w-4" /> Langganan
+            {userRole !== "MEMBER" && (
+              <TabsTrigger value="langganan" className="gap-1.5">
+                <CreditCard className="h-4 w-4" /> Langganan
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="tim" className="gap-1.5">
+              <Users className="h-4 w-4" /> Tim
             </TabsTrigger>
             <TabsTrigger value="pembayaran" className="gap-1.5">
               <Wallet className="h-4 w-4" /> Pembayaran
@@ -663,6 +673,22 @@ function SettingsContent() {
               </CardHeader>
               <CardContent>
                 <PaymentMethodsManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab 5: Tim */}
+          <TabsContent value="tim">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Tim</CardTitle>
+                <CardDescription className="text-xs">
+                  Undang anggota ke bisnis ini (paket BISNIS, maksimal 5 orang). Anggota bisa mengelola
+                  dokumen, tetapi pengaturan tagihan hanya untuk pemilik.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <TeamManager role={userRole} userId={userId} tier={tier} />
               </CardContent>
             </Card>
           </TabsContent>

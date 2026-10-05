@@ -143,6 +143,26 @@ export const paymentMethodPatchSchema = z.object({
 export type PaymentMethodInput = z.infer<typeof paymentMethodSchema>;
 
 // ============================================================
+// TEAM (multi-user undangan)
+// ============================================================
+
+export const teamAcceptSchema = z.object({
+  token: z.string().min(1, "Invite token is required"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(72, "Password is too long"),
+});
+
+export const teamRoleSchema = z.object({
+  role: z.enum(["OWNER", "MEMBER"]),
+});
+
+export type TeamAcceptInput = z.infer<typeof teamAcceptSchema>;
+
+// ============================================================
 // SETTINGS
 // ============================================================
 

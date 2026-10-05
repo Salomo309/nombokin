@@ -89,6 +89,7 @@ model Tenant {
   subscription  Subscription?
   payments      Payment[]
   paymentMethods PaymentMethod[]
+  inviteTokens  InviteToken[]
 
   @@index([slug])
 }
@@ -264,6 +265,20 @@ model PaymentMethod {
   sortOrder     Int               @default(0)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model InviteToken {
+  id        String   @id @default(cuid())
+  tenantId  String
+  role      UserRole @default(MEMBER)
+  token     String   @unique
+  expiresAt DateTime
+  createdBy String
+  createdAt DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 

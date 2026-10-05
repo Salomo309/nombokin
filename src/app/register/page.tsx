@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KeyRound, Mail, User, Building, AlertCircle, CheckCircle2 } from "lucide-react";
@@ -19,6 +19,13 @@ export default function RegisterPage() {
   const [tenantName, setTenantName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+
+  // Mode undangan tim: ?invite=TOKEN (tanpa nama bisnis, tanpa Google)
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get("invite");
+    if (token) setInviteToken(token);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +33,7 @@ export default function RegisterPage() {
     setError(null);
 
     // Validation
-    if (!name || !email || !password || !tenantName) {
+    if (!name || !email || !password || (!inviteToken && !tenantName)) {
       setError("All fields are required");
       setLoading(false);
       return;
@@ -39,6 +46,23 @@ export default function RegisterPage() {
     }
 
     try {
+      if (inviteToken) {
+        const res = await fetch("/api/team/accept", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: inviteToken, name, email, password }),
+        });
+
+        if (res.ok) {
+          router.push("/login?invited=1");
+          router.refresh();
+        } else {
+          const data = await res.json();
+          setError(data.error || "Failed to accept invite.");
+        }
+        return;
+      }
+
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -75,9 +99,13 @@ export default function RegisterPage() {
 
         <Card className="border border-border shadow-xs">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-xl">Daftar Akun Baru</CardTitle>
+            <CardTitle className="text-xl">
+              {inviteToken ? "Gabung Tim" : "Daftar Akun Baru"}
+            </CardTitle>
             <CardDescription className="text-xs">
-              Mulai buat invoice & quotation estetik gratis sekarang juga.
+              {inviteToken
+                ? "Kamu diundang bergabung ke sebuah tim. Lengkapi data untuk membuat akun anggotamu."
+                : "Mulai buat invoice & quotation estetik gratis sekarang juga."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -88,15 +116,17 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <GoogleButton />
+            {!inviteToken && <GoogleButton />}
 
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-[11px] font-medium text-muted-foreground uppercase">
-                atau daftar dengan email
-              </span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
+            {!inviteToken && (
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-[11px] font-medium text-muted-foreground uppercase">
+                  atau daftar dengan email
+                </span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
@@ -115,21 +145,23 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-muted-foreground uppercase">
-                  Nama Bisnis / Usaha
-                </label>
-                <div className="relative">
-                  <Building className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Contoh: Studio Raka, CV Maju Bersama"
-                    value={tenantName}
-                    onChange={(e) => setTenantName(e.target.value)}
-                    className="pl-10"
-                    required
-                  />
+              {!inviteToken && (
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase">
+                    Nama Bisnis / Usaha
+                  </label>
+                  <div className="relative">
+                    <Building className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Contoh: Studio Raka, CV Maju Bersama"
+                      value={tenantName}
+                      onChange={(e) => setTenantName(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold text-muted-foreground uppercase">
@@ -166,7 +198,7 @@ export default function RegisterPage() {
               </div>
 
               <Button type="submit" disabled={loading} className="w-full shadow-xs">
-                {loading ? "Memproses..." : "Daftar Akun & Mulai"}
+                {loading ? "Memproses..." : inviteToken ? "Gabung & Buat Akun" : "Daftar Akun & Mulai"}
               </Button>
             </form>
           </CardContent>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthFromRequest } from "@/lib/auth";
+import { requireRole } from "@/lib/guards";
 import { createSnapTransaction, IS_PRODUCTION, MIDTRANS_CLIENT_KEY } from "@/lib/midtrans";
 import { generateShareToken } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
@@ -7,6 +8,9 @@ import { prisma } from "@/lib/prisma";
 export async function POST(request: NextRequest) {
   const auth = await getAuthFromRequest(request);
   if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+  const roleGate = await requireRole(request, ["OWNER", "ADMIN"]);
+  if (roleGate instanceof NextResponse) return roleGate;
 
   try {
     const body = await request.json();
