@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { createSnapTransaction, isPaymentSuccessful } from "@/lib/midtrans";
+import { createSnapTransaction, getTransactionStatus, isPaymentSuccessful } from "@/lib/midtrans";
 import { generateShareToken } from "@/lib/utils";
 import { sendPaymentConfirmationEmail } from "@/lib/resend";
 import { redisDel } from "@/server/redis";
@@ -211,6 +211,34 @@ export async function handlePaidInvoiceOrder(data: {
   }
 
   return { updated: true };
+}
+
+// Inti bersama untuk aktivasi manual: tanya status ke Midtrans, aktifkan bila lunas.
+// Dipakai POST /api/billing/confirm (SUB-*) dan POST /api/invoices/[id]/check-status.
+// Webhook tetap lewat processPaymentWebhook (tidak perlu query ulang).
+export async function confirmMidtransOrder(
+  orderId: string
+): Promise<{ paid: boolean; status?: string }> {
+  const status = await getTransactionStatus(orderId);
+
+  if (!isPaymentSuccessful(status.transaction_status, status.fraud_status)) {
+    return { paid: false, status: status.transaction_status };
+  }
+
+  if (orderId.startsWith("SUB-")) {
+    await handlePaidSubscriptionOrder({
+      orderId,
+      transactionId: status.transaction_id,
+      grossAmount: status.gross_amount,
+    });
+  } else {
+    await handlePaidInvoiceOrder({
+      orderId,
+      transactionId: status.transaction_id,
+    });
+  }
+
+  return { paid: true };
 }
 
 export async function processPaymentWebhook(payload: {

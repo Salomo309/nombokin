@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthFromRequest } from "@/lib/auth";
 import { requireRole } from "@/lib/guards";
-import { getTransactionStatus, isPaymentSuccessful } from "@/lib/midtrans";
-import { handlePaidSubscriptionOrder } from "@/server/services/paymentService";
+import { confirmMidtransOrder } from "@/server/services/paymentService";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
@@ -32,17 +31,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ paid: true, alreadyProcessed: true });
     }
 
-    const status = await getTransactionStatus(orderId);
+    const result = await confirmMidtransOrder(orderId);
 
-    if (!isPaymentSuccessful(status.transaction_status, status.fraud_status)) {
-      return NextResponse.json({ paid: false, status: status.transaction_status });
+    if (!result.paid) {
+      return NextResponse.json({ paid: false, status: result.status });
     }
-
-    await handlePaidSubscriptionOrder({
-      orderId,
-      transactionId: status.transaction_id,
-      grossAmount: status.gross_amount,
-    });
 
     return NextResponse.json({ paid: true });
   } catch (err) {

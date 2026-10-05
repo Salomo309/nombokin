@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getTransactionStatus, isPaymentSuccessful } from "@/lib/midtrans";
-import { handlePaidInvoiceOrder } from "@/server/services/paymentService";
+import { confirmMidtransOrder } from "@/server/services/paymentService";
 
 // POST /api/invoices/[id]/check-status — tanya status ke Midtrans lalu tandai lunas bila sudah bayar
 export async function POST(
@@ -34,16 +33,11 @@ export async function POST(
       );
     }
 
-    const status = await getTransactionStatus(invoice.midtransOrderId);
+    const result = await confirmMidtransOrder(invoice.midtransOrderId);
 
-    if (!isPaymentSuccessful(status.transaction_status, status.fraud_status)) {
-      return NextResponse.json({ paid: false, status: status.transaction_status });
+    if (!result.paid) {
+      return NextResponse.json({ paid: false, status: result.status });
     }
-
-    await handlePaidInvoiceOrder({
-      orderId: invoice.midtransOrderId,
-      transactionId: status.transaction_id,
-    });
 
     return NextResponse.json({ paid: true });
   } catch (err) {
