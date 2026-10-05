@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthFromRequest } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { invoiceSchema } from "@/lib/validators";
-import { checkInvoiceLimit, createInvoice } from "@/server/services/invoiceService";
+import { checkInvoiceLimit, createInvoice, listInvoices } from "@/server/services/invoiceService";
 import type { InvoiceType } from "@prisma/client";
 
 // GET /api/invoices — list with filter + search
@@ -11,41 +10,16 @@ export async function GET(request: NextRequest) {
   if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const { searchParams } = request.nextUrl;
-  const type = (searchParams.get("type") ?? "INVOICE") as InvoiceType;
-  const status = searchParams.get("status");
-  const search = searchParams.get("search") ?? "";
-  const page = parseInt(searchParams.get("page") ?? "1", 10);
-  const limit = parseInt(searchParams.get("limit") ?? "20", 10);
-  const skip = (page - 1) * limit;
 
-  const where = {
-    tenantId: auth.tenantId,
-    type,
-    isDeleted: false,
-    ...(status && status !== "ALL" ? { status: status as never } : {}),
-    ...(search
-      ? {
-          OR: [
-            { number: { contains: search, mode: "insensitive" as const } },
-            { customer: { name: { contains: search, mode: "insensitive" as const } } },
-            { customer: { company: { contains: search, mode: "insensitive" as const } } },
-          ],
-        }
-      : {}),
-  };
+  const result = await listInvoices(auth.tenantId, {
+    type: (searchParams.get("type") ?? "INVOICE") as InvoiceType,
+    status: searchParams.get("status") ?? undefined,
+    search: searchParams.get("search") ?? "",
+    page: parseInt(searchParams.get("page") ?? "1", 10),
+    limit: parseInt(searchParams.get("limit") ?? "20", 10),
+  });
 
-  const [invoices, total] = await Promise.all([
-    prisma.invoice.findMany({
-      where,
-      include: { customer: true, items: { select: { id: true } } },
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: limit,
-    }),
-    prisma.invoice.count({ where }),
-  ]);
-
-  return NextResponse.json({ invoices, total, page, limit });
+  return NextResponse.json(result);
 }
 
 // POST /api/invoices — create

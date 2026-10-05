@@ -3,6 +3,64 @@ import { generateInvoiceNumber, generateShareToken } from "@/lib/utils";
 import type { InvoiceInput } from "@/lib/validators";
 import type { InvoiceStatus, InvoiceType } from "@prisma/client";
 
+export interface InvoiceListFilter {
+  type: InvoiceType;
+  status?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+// ---- List invoices with filter + search + pagination ----
+export async function listInvoices(
+  tenantId: string,
+  filter: InvoiceListFilter
+) {
+  const { type, status, search = "", page = 1, limit = 20 } = filter;
+  const skip = (page - 1) * limit;
+
+  const where = {
+    tenantId,
+    type,
+    isDeleted: false,
+    ...(status && status !== "ALL" ? { status: status as never } : {}),
+    ...(search
+      ? {
+          OR: [
+            { number: { contains: search, mode: "insensitive" as const } },
+            { customer: { name: { contains: search, mode: "insensitive" as const } } },
+            { customer: { company: { contains: search, mode: "insensitive" as const } } },
+          ],
+        }
+      : {}),
+  };
+
+  const [invoices, total] = await Promise.all([
+    prisma.invoice.findMany({
+      where,
+      include: { customer: true, items: { select: { id: true } } },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    }),
+    prisma.invoice.count({ where }),
+  ]);
+
+  return { invoices, total, page, limit };
+}
+
+// ---- Get single invoice detail (tenant-scoped) ----
+export async function getInvoiceDetail(tenantId: string, id: string) {
+  return prisma.invoice.findFirst({
+    where: { id, tenantId, isDeleted: false },
+    include: {
+      customer: true,
+      items: { orderBy: { sortOrder: "asc" } },
+      tenant: { include: { subscription: true } },
+    },
+  });
+}
+
 const FREE_TIER_LIMIT = 5;
 
 // ---- Check monthly invoice limit ----
