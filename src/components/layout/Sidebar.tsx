@@ -14,6 +14,7 @@ import {
   Receipt,
   ShieldCheck,
   Package,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/shared/Logo";
@@ -73,6 +74,11 @@ export function Sidebar({ tenantName, tier, role, onClose, className }: SidebarP
       label: "Pembayaran",
       href: "/payments",
       icon: Receipt,
+    },
+    {
+      label: "Laporan",
+      href: "/reports",
+      icon: BarChart3,
     },
     {
       label: "Pengaturan",

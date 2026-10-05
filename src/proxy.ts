@@ -8,6 +8,7 @@ const PROTECTED_PATHS = [
   "/customers",
   "/products",
   "/payments",
+  "/reports",
   "/settings",
   "/admin",
 ];
