@@ -59,3 +59,22 @@ export async function redisDel(key: string): Promise<void> {
     // ignore
   }
 }
+
+// Increment counter, set expiry on first hit. Returns current count,
+// or null when Redis is unavailable (caller should fail open).
+export async function redisIncrWithExpiry(
+  key: string,
+  ttlSeconds: number
+): Promise<number | null> {
+  const r = getRedis();
+  if (!r) return null;
+  try {
+    const count = await r.incr(key);
+    if (count === 1) {
+      await r.expire(key, ttlSeconds);
+    }
+    return count;
+  } catch {
+    return null;
+  }
+}

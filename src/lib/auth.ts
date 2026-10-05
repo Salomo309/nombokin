@@ -2,11 +2,20 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? "fallback-dev-secret-change-in-production"
-);
+function requiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(`[auth] Missing required environment variable: ${name}`);
+    }
+    return `dev-only-insecure-${name.toLowerCase()}-do-not-use-in-production`;
+  }
+  return value;
+}
+
+const JWT_SECRET = new TextEncoder().encode(requiredEnv("JWT_SECRET"));
 const JWT_REFRESH_SECRET = new TextEncoder().encode(
-  process.env.JWT_REFRESH_SECRET ?? "fallback-refresh-secret-change-in-production"
+  requiredEnv("JWT_REFRESH_SECRET")
 );
 
 const ACCESS_TOKEN_EXPIRY = "60m";

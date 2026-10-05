@@ -201,6 +201,7 @@ export default function PublicInvoicePage() {
   const manualMethods = invoice.tenant.paymentMethods ?? [];
   const manualBanks = manualMethods.filter((m) => m.type === "BANK_TRANSFER");
   const manualQris = manualMethods.find((m) => m.type === "CUSTOM_QRIS");
+  const canPayOnline = invoice.tenant.subscription?.tier !== "FREE";
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] dark:bg-background text-foreground font-sans px-4 py-8 md:py-16">
@@ -253,7 +254,7 @@ export default function PublicInvoicePage() {
               </div>
 
               <div className="space-y-3">
-                {!isPaid && !isQuotation && (
+                {!isPaid && !isQuotation && canPayOnline && (
                   <Button
                     onClick={handlePay}
                     disabled={paying}
@@ -269,6 +270,12 @@ export default function PublicInvoicePage() {
                       </>
                     )}
                   </Button>
+                )}
+
+                {!isPaid && !isQuotation && !canPayOnline && (
+                  <div className="rounded-lg bg-secondary/40 border border-border/60 p-3.5 text-xs text-muted-foreground leading-normal text-center">
+                    Pembayaran online belum diaktifkan untuk tagihan ini. Hubungi penyedia jasa untuk info pembayaran.
+                  </div>
                 )}
 
                 <Button

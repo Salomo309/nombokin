@@ -89,6 +89,17 @@ export async function POST(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
+    const subscription = await prisma.subscription.findUnique({
+      where: { tenantId: invoice.tenantId },
+    });
+
+    if (!subscription || subscription.tier === "FREE") {
+      return NextResponse.json(
+        { error: "Online payment is not available for this invoice" },
+        { status: 403 }
+      );
+    }
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const paymentUrl = await createPaymentLink(invoice.id, invoice.tenantId, appUrl);
 

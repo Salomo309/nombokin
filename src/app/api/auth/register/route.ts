@@ -10,8 +10,16 @@ import {
 import { registerSchema } from "@/lib/validators";
 import { slugify } from "@/lib/utils";
 import { sendVerificationEmail } from "@/lib/resend";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
+  const limited = await checkRateLimit(request, {
+    key: "register",
+    limit: 5,
+    windowSeconds: 60,
+  });
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const parsed = registerSchema.safeParse(body);

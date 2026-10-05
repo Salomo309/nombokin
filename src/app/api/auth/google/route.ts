@@ -29,9 +29,10 @@ export async function GET(request: NextRequest) {
   authorizeUrl.searchParams.set("access_type", "online");
 
   const response = NextResponse.redirect(authorizeUrl);
+  const secure = (process.env.NEXT_PUBLIC_APP_URL ?? "").startsWith("https");
   response.cookies.set(OAUTH_STATE_COOKIE, state, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     sameSite: "lax",
     maxAge: 10 * 60,
     path: "/api/auth/google",

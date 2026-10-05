@@ -7,8 +7,16 @@ import {
   setAuthCookies,
 } from "@/lib/auth";
 import { loginSchema } from "@/lib/validators";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
+  const limited = await checkRateLimit(request, {
+    key: "login",
+    limit: 10,
+    windowSeconds: 60,
+  });
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const parsed = loginSchema.safeParse(body);

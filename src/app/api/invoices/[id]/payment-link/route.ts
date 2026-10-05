@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createPaymentLink } from "@/server/services/paymentService";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(
   request: NextRequest,
@@ -10,6 +11,13 @@ export async function POST(
   const { id } = await params;
   const auth = await getAuthFromRequest(request);
   if (!auth) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+  const limited = await checkRateLimit(request, {
+    key: "payment-link",
+    limit: 30,
+    windowSeconds: 60,
+  });
+  if (limited) return limited;
 
   try {
     const subscription = await prisma.subscription.findUnique({

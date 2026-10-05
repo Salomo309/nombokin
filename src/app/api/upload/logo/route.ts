@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { getAuthFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 
 const DEFAULT_MAX_SIZE = 2 * 1024 * 1024; // 2MB
+
+// SVG ditolak (risiko XSS bila diakses langsung); ekstensi diambil dari MIME tervalidasi.
+const ALLOWED_TYPES: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
 
 export async function POST(request: NextRequest) {
   const auth = await getAuthFromRequest(request);
@@ -41,10 +49,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
-    if (!allowedTypes.includes(file.type)) {
+    const allowedExt = ALLOWED_TYPES[file.type];
+    if (!allowedExt) {
       return NextResponse.json(
-        { error: "Unsupported file format. Use JPG, PNG, WEBP, or SVG" },
+        { error: "Unsupported file format. Use JPG, PNG, or WEBP" },
         { status: 400 }
       );
     }
@@ -58,9 +66,8 @@ export async function POST(request: NextRequest) {
     // Pastikan folder exist
     await mkdir(uploadDir, { recursive: true });
 
-    // Buat nama file unik
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${auth.tenantId}-${Date.now()}.${fileExt}`;
+    // Nama file acak — ekstensi dari MIME tervalidasi, bukan nama asli (cegah double-extension)
+    const fileName = `logo-${randomBytes(16).toString("hex")}.${allowedExt}`;
     const filePath = join(uploadDir, fileName);
 
     // Tulis file

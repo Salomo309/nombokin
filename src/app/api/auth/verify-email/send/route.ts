@@ -3,8 +3,16 @@ import { randomBytes } from "crypto";
 import { getAuthFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendVerificationEmail } from "@/lib/resend";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
+  const limited = await checkRateLimit(request, {
+    key: "verify-email-send",
+    limit: 5,
+    windowSeconds: 60,
+  });
+  if (limited) return limited;
+
   const auth = await getAuthFromRequest(request);
   if (!auth) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
