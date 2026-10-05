@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthFromRequest } from "@/lib/auth";
 import { requireRole } from "@/lib/guards";
-import { prisma } from "@/lib/prisma";
+import { cancelPendingPayment } from "@/server/services/subscriptionService";
 
 export async function POST(request: NextRequest) {
   const auth = await getAuthFromRequest(request);
@@ -18,19 +18,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "orderId is required" }, { status: 400 });
     }
 
-    const payment = await prisma.payment.findFirst({
-      where: { orderId, tenantId: auth.tenantId },
-    });
-
-    if (!payment) {
+    const found = await cancelPendingPayment(auth.tenantId, orderId);
+    if (!found) {
       return NextResponse.json({ error: "Payment not found" }, { status: 404 });
-    }
-
-    if (payment.status === "PENDING") {
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: { status: "CANCELLED" },
-      });
     }
 
     return NextResponse.json({ success: true, status: "CANCELLED" });
