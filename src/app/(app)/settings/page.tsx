@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateProfileAction, updateCompanyAction } from "@/server/actions/settings";
 import { PaymentMethodsManager } from "@/components/settings/PaymentMethodsManager";
 import { TeamManager } from "@/components/settings/TeamManager";
+import { getPrice, formatPrice } from "@/lib/pricing";
 
 function SettingsContent() {
   const searchParams = useSearchParams();
@@ -611,7 +612,7 @@ function SettingsContent() {
                         <div className="space-y-3">
                           <h4 className="font-serif font-bold text-base">Paket PRO</h4>
                           <p className="font-serif text-2xl font-bold text-primary">
-                            {billingInterval === "MONTHLY" ? "Rp 29.000" : "Rp 299.000"}
+                            {formatPrice(getPrice("PRO", billingInterval))}
                             <span className="text-xs font-sans text-muted-foreground">
                               {billingInterval === "MONTHLY" ? "/bln" : "/thn"}
                             </span>
@@ -634,7 +635,7 @@ function SettingsContent() {
                         <div className="space-y-3">
                           <h4 className="font-serif font-bold text-base">Paket BISNIS</h4>
                           <p className="font-serif text-2xl font-bold text-foreground">
-                            {billingInterval === "MONTHLY" ? "Rp 59.000" : "Rp 599.000"}
+                            {formatPrice(getPrice("BUSINESS", billingInterval))}
                             <span className="text-xs font-sans text-muted-foreground">
                               {billingInterval === "MONTHLY" ? "/bln" : "/thn"}
                             </span>

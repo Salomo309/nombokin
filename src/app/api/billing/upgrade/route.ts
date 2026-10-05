@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthFromRequest } from "@/lib/auth";
 import { requireRole } from "@/lib/guards";
+import { getPrice, intervalShort } from "@/lib/pricing";
 import { createSnapTransaction, IS_PRODUCTION, MIDTRANS_CLIENT_KEY } from "@/lib/midtrans";
 import { generateShareToken } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
@@ -23,17 +24,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Tier and interval are required" }, { status: 400 });
     }
 
-    let price = 0;
-    if (tier === "PRO") {
-      price = interval === "MONTHLY" ? 29000 : 299000;
-    } else if (tier === "BUSINESS") {
-      price = interval === "MONTHLY" ? 59000 : 599000; // Let's set Business yearly to 599000
+    if (tier !== "PRO" && tier !== "BUSINESS") {
+      return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
     }
+    if (interval !== "MONTHLY" && interval !== "YEARLY") {
+      return NextResponse.json({ error: "Invalid interval" }, { status: 400 });
+    }
+
+    const price = getPrice(tier, interval);
 
     // Midtrans order_id max 50 chars — keep it short and unique.
     // Format: SUB-{tier}-{M|Y}-{tenantId}-{token}
-    const intervalShort = interval === "MONTHLY" ? "M" : "Y";
-    const orderId = `SUB-${tier}-${intervalShort}-${auth.tenantId}-${generateShareToken()
+    const orderId = `SUB-${tier}-${intervalShort(interval)}-${auth.tenantId}-${generateShareToken()
       .replace(/[-_]/g, "")
       .slice(0, 8)}`;
 

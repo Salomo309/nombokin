@@ -22,6 +22,7 @@ import {
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Reveal } from "@/components/shared/Reveal";
 import { TiltCard } from "@/components/shared/TiltCard";
+import { getPrice, formatPrice } from "@/lib/pricing";
 
 const steps = [
   {
@@ -100,7 +101,7 @@ const faqItems = [
   },
   {
     q: "Apa beda paket FREE dan PRO?",
-    a: "FREE memberi 5 invoice/bulan dengan watermark dan tanpa link bayar. PRO (Rp29.000/bulan) membuka invoice tanpa batas, link bayar QRIS/VA, custom logo, dan tanpa watermark.",
+    a: `FREE memberi 5 invoice/bulan dengan watermark dan tanpa link bayar. PRO (${formatPrice(getPrice("PRO", "MONTHLY"))}/bulan) membuka invoice tanpa batas, link bayar QRIS/VA, custom logo, dan tanpa watermark.`,
   },
   {
     q: "Bagaimana keamanan data klien saya?",
@@ -522,7 +523,7 @@ export default function LandingPage() {
                 </span>
               </div>
               <p className="mt-5 font-serif text-4xl font-extrabold tracking-tight tabular-nums">
-                Rp 29.000
+                {formatPrice(getPrice("PRO", "MONTHLY"))}
               </p>
               <div className="my-6 h-px bg-primary-foreground/20" />
               <ul className="flex-1 space-y-3 text-sm text-primary-foreground/90">
@@ -549,7 +550,7 @@ export default function LandingPage() {
                 </span>
               </div>
               <p className="mt-5 font-serif text-4xl font-extrabold tracking-tight tabular-nums">
-                Rp 59.000
+                {formatPrice(getPrice("BUSINESS", "MONTHLY"))}
               </p>
               <div className="my-6 h-px bg-border" />
               <ul className="flex-1 space-y-3 text-sm text-muted-foreground">
