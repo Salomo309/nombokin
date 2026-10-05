@@ -29,6 +29,8 @@ No separate BE/FE: UI in `src/app` + `src/components`; backend in `src/app/api/*
 - Service-layer rule: route = validasi ringan + gate + delegasi; aturan bisnis di `src/server/services/` (contoh pola: `reportService.ts`, `confirmMidtransOrder()` di `paymentService.ts`).
 - Pricing lives only in `src/lib/pricing.ts` — never hardcode amounts elsewhere.
 - Team rules: BISNIS flat max 5 members (`src/lib/team.ts`); invite link 7 hari sekali pakai tanpa email; billing mutations OWNER/ADMIN only; role changes apply after re-login (role is in JWT).
+- Downgrade (non-OWNER suspend): `handleTenantDowngrade()` in `src/server/services/subscriptionService.ts`; ADMIN exempt (keputusan produk); restore only on BUSINESS re-upgrade; suspended login/refresh → 403; sweeper via `GET /api/cron/subscriptions` (Bearer CRON_SECRET).
+- JANGAN pakai `redirect()` / `permanentRedirect()` / `notFound()` gaya-fungsi dari `next/navigation` di Server Component (terbukti diam mengembalikan 200 di app ini, dev maupun prod). Redirect server-side hanya via `proxy.ts` / `NextResponse.redirect`.
 - Commit style: `feat:` / `fix:` one concern per commit; split shared-file hunks instead of mixing.
 
 ## Key behaviors (don't break)

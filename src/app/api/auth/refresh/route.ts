@@ -5,6 +5,7 @@ import {
   signAccessToken,
   signRefreshToken,
   setAuthCookies,
+  clearAuthCookies,
   REFRESH_COOKIE,
 } from "@/lib/auth";
 
@@ -27,6 +28,15 @@ export async function POST(request: NextRequest) {
 
     if (!user || user.refreshToken !== token) {
       return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+    }
+
+    if (user.status === "SUSPENDED") {
+      const response = NextResponse.json(
+        { error: "Your account is suspended because this workspace is no longer on the BUSINESS plan." },
+        { status: 403 }
+      );
+      await clearAuthCookies(response);
+      return response;
     }
 
     // Buat token baru

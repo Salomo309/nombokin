@@ -50,6 +50,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (user.status === "SUSPENDED") {
+      return NextResponse.json(
+        { error: "Your account is suspended because this workspace is no longer on the BUSINESS plan. Please contact your workspace owner." },
+        { status: 403 }
+      );
+    }
+
     const accessToken = await signAccessToken({
       userId: user.id,
       tenantId: user.tenantId,

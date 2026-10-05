@@ -3,6 +3,7 @@ import { createSnapTransaction, getTransactionStatus, isPaymentSuccessful } from
 import { generateShareToken } from "@/lib/utils";
 import { sendPaymentConfirmationEmail } from "@/lib/resend";
 import { redisDel } from "@/server/redis";
+import { handleTenantRestore } from "@/server/services/subscriptionService";
 
 async function invalidatePaymentCaches(tenantId: string): Promise<void> {
   await Promise.all([
@@ -139,6 +140,11 @@ export async function handlePaidSubscriptionOrder(data: {
 
   console.log(`[Payment] Tenant ${tenantId} upgraded to ${tier} (${interval}) until ${currentPeriodEnd.toISOString()}`);
   await invalidatePaymentCaches(tenantId);
+
+  // Re-upgrade ke BISNIS memulihkan anggota yang dibekukan saat downgrade
+  if (tier === "BUSINESS") {
+    await handleTenantRestore(tenantId);
+  }
 }
 
 export async function handlePaidInvoiceOrder(data: {

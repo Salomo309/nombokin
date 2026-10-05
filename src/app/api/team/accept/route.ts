@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { teamAcceptSchema } from "@/lib/validators";
+import { getTenantTier } from "@/lib/guards";
 import { MAX_TEAM_MEMBERS } from "@/lib/team";
 
 // POST /api/team/accept — publik: tukar token undangan jadi akun anggota
@@ -23,6 +24,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Invite link is invalid or expired" },
         { status: 400 }
+      );
+    }
+
+    const tenantTier = await getTenantTier(invite.tenantId);
+    if (tenantTier !== "BUSINESS") {
+      return NextResponse.json(
+        { error: "Team members require a BUSINESS subscription" },
+        { status: 403 }
       );
     }
 
