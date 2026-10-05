@@ -34,6 +34,7 @@ No separate BE/FE: UI in `src/app` + `src/components`; backend in `src/app/api/*
 - Subscription activation has TWO idempotent paths sharing `handlePaidSubscriptionOrder()`: Midtrans webhook (`/api/midtrans/webhook`, needs public HTTPS URL configured in dashboard) and fallback `POST /api/billing/confirm` (polls Midtrans status; used by settings page after Snap success).
 - FREE quota = 5 invoices/month counted at creation (including deleted). Invoice edit only when DRAFT. Payment links for INVOICE type only.
 - Tiers: FREE / PRO / BUSINESS. BUSINESS multi-user is NOT implemented yet (marketing copy only).
+- Manual payments (ALL tiers): tenant configures bank accounts + own QRIS in settings Pembayaran tab (`PaymentMethod` model); client confirms on public page → PENDING payment; merchant verifies via bank statement then marks PAID manually. QRIS upload stays open to all tiers (unlike logo).
 
 ## Deployment (production VPS, ask owner for IPs/credentials — never commit secrets)
 

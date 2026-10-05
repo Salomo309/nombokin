@@ -104,6 +104,45 @@ export const invoiceSchema = z.object({
 export type InvoiceInput = z.infer<typeof invoiceSchema>;
 
 // ============================================================
+// PAYMENT METHOD (manual bank transfer / custom QRIS)
+// ============================================================
+
+export const paymentMethodSchema = z
+  .object({
+    type: z.enum(["BANK_TRANSFER", "CUSTOM_QRIS"]),
+    bankName: z.string().optional(),
+    accountNumber: z.string().optional(),
+    accountHolder: z.string().optional(),
+    qrisImageUrl: z.string().optional(),
+    isActive: z.boolean().optional(),
+    sortOrder: z.coerce.number().optional(),
+  })
+  .superRefine((d, ctx) => {
+    if (d.type === "BANK_TRANSFER") {
+      if (!d.bankName)
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Bank name is required", path: ["bankName"] });
+      if (!d.accountNumber)
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Account number is required", path: ["accountNumber"] });
+      if (!d.accountHolder)
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Account holder is required", path: ["accountHolder"] });
+    }
+    if (d.type === "CUSTOM_QRIS" && !d.qrisImageUrl) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "QRIS image is required", path: ["qrisImageUrl"] });
+    }
+  });
+
+export const paymentMethodPatchSchema = z.object({
+  bankName: z.string().optional(),
+  accountNumber: z.string().optional(),
+  accountHolder: z.string().optional(),
+  qrisImageUrl: z.string().optional(),
+  isActive: z.boolean().optional(),
+  sortOrder: z.coerce.number().optional(),
+});
+
+export type PaymentMethodInput = z.infer<typeof paymentMethodSchema>;
+
+// ============================================================
 // SETTINGS
 // ============================================================
 

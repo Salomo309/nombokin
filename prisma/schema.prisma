@@ -63,6 +63,11 @@ enum PaymentType {
   INVOICE
 }
 
+enum PaymentMethodType {
+  BANK_TRANSFER
+  CUSTOM_QRIS
+}
+
 // ============================================================
 // MODELS
 // ============================================================
@@ -83,6 +88,7 @@ model Tenant {
   products      Product[]
   subscription  Subscription?
   payments      Payment[]
+  paymentMethods PaymentMethod[]
 
   @@index([slug])
 }
@@ -244,4 +250,22 @@ model Payment {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+model PaymentMethod {
+  id            String            @id @default(cuid())
+  tenantId      String
+  type          PaymentMethodType @default(BANK_TRANSFER)
+  bankName      String?
+  accountNumber String?
+  accountHolder String?
+  qrisImageUrl  String?
+  isActive      Boolean           @default(true)
+  sortOrder     Int               @default(0)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
 }

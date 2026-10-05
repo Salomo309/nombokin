@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { CreditCard, Download, Loader2, AlertCircle, ArrowLeft } from "lucide-react";
+import { CreditCard, Download, Loader2, AlertCircle, ArrowLeft, Copy, Landmark, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Logo } from "@/components/shared/Logo";
@@ -47,7 +47,16 @@ interface PublicInvoice {
     subscription: {
       tier: string;
     };
+    paymentMethods?: Array<{
+      id: string;
+      type: "BANK_TRANSFER" | "CUSTOM_QRIS";
+      bankName?: string | null;
+      accountNumber?: string | null;
+      accountHolder?: string | null;
+      qrisImageUrl?: string | null;
+    }>;
   };
+  hasPendingManual?: boolean;
 }
 
 export default function PublicInvoicePage() {
@@ -58,6 +67,8 @@ export default function PublicInvoicePage() {
   const [invoice, setInvoice] = useState<PublicInvoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,6 +78,7 @@ export default function PublicInvoicePage() {
         if (res.ok) {
           const data = await res.json();
           setInvoice(data);
+          setConfirmed(!!data.hasPendingManual);
         } else {
           setError("Invoice not found or has been deleted.");
         }
@@ -103,6 +115,40 @@ export default function PublicInvoicePage() {
       setError("Server connection error.");
     } finally {
       setPaying(false);
+    }
+  };
+
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ variant: "success", title: "Copied to clipboard" });
+    } catch {
+      toast({ title: `Salin manual: ${text}` });
+    }
+  };
+
+  const handleConfirmManual = async () => {
+    if (!invoice) return;
+    setConfirming(true);
+    try {
+      const firstMethod = invoice.tenant.paymentMethods?.[0];
+      const res = await fetch(`/api/i/${shareToken}/confirm-manual`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentMethodId: firstMethod?.id }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setConfirmed(true);
+        toast({ variant: "success", title: "Confirmation received! Awaiting merchant verification." });
+      } else {
+        toast({ variant: "destructive", title: data.error || "Failed to submit confirmation" });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ variant: "destructive", title: "Server connection error." });
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -152,6 +198,9 @@ export default function PublicInvoicePage() {
 
   const isPaid = invoice.status === "PAID";
   const isQuotation = invoice.type === "QUOTATION";
+  const manualMethods = invoice.tenant.paymentMethods ?? [];
+  const manualBanks = manualMethods.filter((m) => m.type === "BANK_TRANSFER");
+  const manualQris = manualMethods.find((m) => m.type === "CUSTOM_QRIS");
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] dark:bg-background text-foreground font-sans px-4 py-8 md:py-16">
@@ -232,6 +281,71 @@ export default function PublicInvoicePage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Transfer Manual (tanpa Midtrans) */}
+          {!isPaid && !isQuotation && manualMethods.length > 0 && (
+            <Card className="border border-border shadow-xs bg-card">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base">Transfer Manual</CardTitle>
+                <CardDescription className="text-xs">
+                  Transfer ke tujuan di bawah sejumlah {formatRupiah(invoice.total)} ({invoice.number}),
+                  lalu tekan konfirmasi.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {manualBanks.map((b) => (
+                  <div key={b.id} className="rounded-lg border border-border/60 p-3.5 space-y-1">
+                    <p className="flex items-center gap-1.5 text-xs font-bold text-foreground uppercase">
+                      <Landmark className="h-3.5 w-3.5 text-primary" /> {b.bankName}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-serif text-lg font-bold text-foreground tabular-nums flex-1">
+                        {b.accountNumber}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1 text-[11px] shrink-0"
+                        onClick={() => handleCopy(b.accountNumber || "")}
+                      >
+                        <Copy className="h-3.5 w-3.5" /> Salin
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">a.n. {b.accountHolder}</p>
+                  </div>
+                ))}
+
+                {manualQris?.qrisImageUrl && (
+                  <div className="flex flex-col items-center gap-2 rounded-lg border border-border/60 p-4">
+                    <p className="flex items-center gap-1.5 text-xs font-bold text-foreground uppercase">
+                      <QrCode className="h-3.5 w-3.5 text-primary" /> Scan QRIS
+                    </p>
+                    <img src={manualQris.qrisImageUrl} alt="QRIS" className="h-48 w-48 object-contain rounded-md bg-white" />
+                  </div>
+                )}
+
+                {confirmed ? (
+                  <div className="rounded-lg border border-green-200/50 bg-[#ECFDF3] p-3.5 text-center text-[#15803D] font-semibold text-xs leading-relaxed">
+                    Konfirmasi diterima! Pembayaranmu sedang diverifikasi oleh penyedia jasa.
+                  </div>
+                ) : (
+                  <Button
+                    onClick={handleConfirmManual}
+                    disabled={confirming}
+                    variant="outline"
+                    className="w-full gap-2 text-xs"
+                  >
+                    {confirming ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Mengirim...</>
+                    ) : (
+                      "Saya Sudah Transfer"
+                    )}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {isPaid && (
             <div className="rounded-xl border border-green-200/50 bg-[#ECFDF3] p-4 text-center text-[#15803D] font-semibold text-sm">

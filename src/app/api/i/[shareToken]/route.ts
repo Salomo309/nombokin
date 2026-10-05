@@ -41,6 +41,18 @@ export async function GET(
                 tier: true,
               },
             },
+            paymentMethods: {
+              where: { isActive: true },
+              orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+              select: {
+                id: true,
+                type: true,
+                bankName: true,
+                accountNumber: true,
+                accountHolder: true,
+                qrisImageUrl: true,
+              },
+            },
           },
         },
       },
@@ -50,7 +62,12 @@ export async function GET(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    return NextResponse.json(invoice);
+    const pendingManual = await prisma.payment.findFirst({
+      where: { invoiceId: invoice.id, status: "PENDING", paymentMethod: "MANUAL" },
+      select: { id: true },
+    });
+
+    return NextResponse.json({ ...invoice, hasPendingManual: !!pendingManual });
   } catch (err) {
     console.error("[PublicInvoice/GET]", err);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });

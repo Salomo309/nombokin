@@ -2,12 +2,13 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { User, Building, CreditCard, Sparkles, Upload, Loader2, Check } from "lucide-react";
+import { User, Building, CreditCard, Sparkles, Upload, Loader2, Check, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateProfileAction, updateCompanyAction } from "@/server/actions/settings";
+import { PaymentMethodsManager } from "@/components/settings/PaymentMethodsManager";
 
 function SettingsContent() {
   const searchParams = useSearchParams();
@@ -324,6 +325,9 @@ function SettingsContent() {
             </TabsTrigger>
             <TabsTrigger value="langganan" className="gap-1.5">
               <CreditCard className="h-4 w-4" /> Langganan
+            </TabsTrigger>
+            <TabsTrigger value="pembayaran" className="gap-1.5">
+              <Wallet className="h-4 w-4" /> Pembayaran
             </TabsTrigger>
           </TabsList>
 
@@ -643,6 +647,22 @@ function SettingsContent() {
                     Anda memakai paket tertinggi. Terima kasih telah mendukung Nombokin!
                   </p>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab 4: Pembayaran Manual */}
+          <TabsContent value="pembayaran">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Pembayaran Manual</CardTitle>
+                <CardDescription className="text-xs">
+                  Daftarkan rekening bank & QRIS tokomu. Klien bisa transfer langsung tanpa Midtrans,
+                  lalu konfirmasi — kamu verifikasi di halaman Pembayaran.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PaymentMethodsManager />
               </CardContent>
             </Card>
           </TabsContent>
