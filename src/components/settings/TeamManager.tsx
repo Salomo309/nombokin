@@ -146,8 +146,9 @@ export function TeamManager({ role, userId, tier }: TeamManagerProps) {
 
   if (!isBusiness) {
     return (
-      <div className="rounded-lg bg-secondary/40 border border-border/60 p-4 text-xs text-muted-foreground leading-relaxed text-center">
-        Fitur tim (maksimal 5 anggota) tersedia untuk paket BISNIS. Upgrade di tab Langganan untuk mengundang anggota.
+      <div className="rounded-lg bg-secondary/40 border border-border/60 p-4 text-xs text-muted-foreground leading-relaxed text-center space-y-1">
+        <p>Fitur tim (maksimal 5 anggota) tersedia untuk paket BISNIS. Upgrade di tab Langganan untuk mengundang anggota.</p>
+        <p>Kembali ke PRO tidak memulihkan anggota beku — hanya BISNIS yang memulihkan.</p>
       </div>
     );
   }

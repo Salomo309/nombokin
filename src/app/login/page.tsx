@@ -16,6 +16,7 @@ function LoginForm() {
   const redirect = searchParams.get("redirect") || "/dashboard";
   const verified = searchParams.get("verified");
   const oauthError = searchParams.get("error");
+  const suspended = searchParams.get("suspended");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,6 +43,9 @@ function LoginForm() {
 
       if (res.ok) {
         router.push(redirect);
+        router.refresh();
+      } else if (res.status === 403) {
+        router.push("/suspended");
         router.refresh();
       } else {
         const data = await res.json();
@@ -99,6 +103,14 @@ function LoginForm() {
                   {oauthError === "google_not_configured"
                     ? "Login dengan Google belum diaktifkan. Silakan gunakan email & password."
                     : "Login dengan Google gagal. Coba lagi atau gunakan email & password."}
+                </span>
+              </div>
+            )}
+            {suspended === "1" && (
+              <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200/50 p-3.5 text-xs text-red-700">
+                <AlertCircle className="h-4.5 w-4.5 shrink-0" />
+                <span>
+                  Sesi Anda berakhir karena akun dibekukan. Hubungi pemilik workspace untuk mengaktifkan kembali.
                 </span>
               </div>
             )}

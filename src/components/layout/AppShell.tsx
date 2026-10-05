@@ -67,9 +67,12 @@ export function AppShell({ children }: AppShellProps) {
             // Retry request asli dengan access token baru
             return originalFetch(input, init);
           }
-          router.push(
-            `/login?redirect=${encodeURIComponent(window.location.pathname)}`
-          );
+          // Refresh 403 = akun dibekukan → arahkan dengan pesan suspended
+          const loginUrl =
+            refreshRes.status === 403
+              ? `/login?suspended=1&redirect=${encodeURIComponent(window.location.pathname)}`
+              : `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+          router.push(loginUrl);
         } catch (err) {
           console.error("Failed to refresh session:", err);
           router.push(

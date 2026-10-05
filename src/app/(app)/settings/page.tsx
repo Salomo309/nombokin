@@ -7,6 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { updateProfileAction, updateCompanyAction } from "@/server/actions/settings";
 import { PaymentMethodsManager } from "@/components/settings/PaymentMethodsManager";
 import { TeamManager } from "@/components/settings/TeamManager";
@@ -35,6 +43,9 @@ function SettingsContent() {
   const [subStatus, setSubStatus] = useState("ACTIVE");
   const [periodEnd, setPeriodEnd] = useState<string | null>(null);
   const [billingInterval, setBillingInterval] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
+  const [downgradeTarget, setDowngradeTarget] = useState<"PRO" | "FREE">("FREE");
+  const [downgrading, setDowngrading] = useState(false);
+  const confirm = useConfirm();
 
   // UI state
   const [loading, setLoading] = useState(true);
@@ -151,7 +162,11 @@ function SettingsContent() {
           }
           const currentTier = (await loadSettings()) ?? "FREE";
           if (activated || currentTier !== "FREE") {
-            setSuccessMsg("Payment successful! Your plan has been activated.");
+            setSuccessMsg(
+              selectedTier === "PRO"
+                ? "Payment successful! Your plan has been activated. Catatan: anggota yang dibekukan tetap nonaktif sampai paket BISNIS."
+                : "Payment successful! Your plan has been activated."
+            );
           } else {
             setSuccessMsg("Payment successful. Subscription status will be verified automatically.");
           }
@@ -180,6 +195,44 @@ function SettingsContent() {
       setErrorMsg("Connection failed");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDowngrade = async () => {
+    const targetLabel = downgradeTarget === "PRO" ? "PRO" : "GRATIS";
+    const ok = await confirm({
+      title: `Turunkan paket ke ${targetLabel}?`,
+      description:
+        `Turunkan paket dari ${tier} ke ${targetLabel}? Semua anggota (MEMBER) langsung dibekukan dan tidak bisa masuk, ` +
+        `dan semua link undangan yang belum dipakai ikut hangus. ` +
+        `Catatan penting: penurunan BISNIS → PRO ikut membekukan anggota. ` +
+        `Kembali/naik ke PRO tidak memulihkan anggota — hanya upgrade ulang ke BISNIS yang mengaktifkan mereka kembali.`,
+      confirmLabel: "Ya, turunkan",
+      destructive: true,
+    });
+    if (!ok) return;
+
+    setDowngrading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const res = await fetch("/api/billing/subscription/downgrade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier: downgradeTarget }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSuccessMsg(`Subscription downgraded to ${targetLabel}. Anggota tim dibekukan.`);
+        await loadSettings();
+      } else {
+        setErrorMsg(data.error || "Failed to downgrade subscription");
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg("Connection failed");
+    } finally {
+      setDowngrading(false);
     }
   };
 
@@ -591,9 +644,14 @@ function SettingsContent() {
                 {tier !== "BUSINESS" && (
                   <div className="space-y-6">
                     {tier === "PRO" && (
-                      <p className="text-center text-xs text-muted-foreground">
-                        Paket <strong className="text-foreground">PRO</strong> Anda sedang aktif — upgrade ke BISNIS kapan saja.
-                      </p>
+                      <div className="text-center text-xs text-muted-foreground space-y-1">
+                        <p>
+                          Paket <strong className="text-foreground">PRO</strong> Anda sedang aktif — upgrade ke BISNIS kapan saja.
+                        </p>
+                        <p>
+                          Kembali ke PRO tidak memulihkan anggota beku — hanya BISNIS yang memulihkan.
+                        </p>
+                      </div>
                     )}
                     <div className="flex justify-center gap-4 border-b border-border pb-4">
                       <Button
@@ -666,6 +724,40 @@ function SettingsContent() {
                   <p className="text-center text-xs text-muted-foreground py-2">
                     Anda memakai paket tertinggi. Terima kasih telah mendukung Nombokin!
                   </p>
+                )}
+
+                {tier !== "FREE" && userRole !== "MEMBER" && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Turunkan Paket</CardTitle>
+                      <CardDescription className="text-xs">
+                        Turun dari {tier} — semua anggota langsung dibekukan dan link undangan hangus.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <Select
+                        value={downgradeTarget}
+                        onValueChange={(v) => setDowngradeTarget(v as "PRO" | "FREE")}
+                      >
+                        <SelectTrigger className="h-9 w-44 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tier === "BUSINESS" && <SelectItem value="PRO">PRO</SelectItem>}
+                          <SelectItem value="FREE">Gratis</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        onClick={handleDowngrade}
+                        disabled={downgrading}
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs text-destructive hover:text-destructive"
+                      >
+                        {downgrading ? "Menurunkan..." : `Turunkan ke ${downgradeTarget === "PRO" ? "PRO" : "Gratis"}`}
+                      </Button>
+                    </CardContent>
+                  </Card>
                 )}
               </CardContent>
             </Card>
