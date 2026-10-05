@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Download, Wallet, TrendingUp, AlertTriangle, Users, Loader2, CreditCard } from "lucide-react";
 import { formatRupiah } from "@/lib/utils";
+import { getPrice, formatPrice } from "@/lib/pricing";
 
 interface ReportSummary {
   totals: { invoiced: number; paid: number; outstanding: number; invoiceCount: number };
@@ -85,7 +86,7 @@ export default function ReportsPage() {
             <div className="space-y-1">
               <p className="font-serif text-lg font-bold text-foreground">Khusus paket BISNIS</p>
               <p className="text-xs text-muted-foreground max-w-sm">
-                Laporan pendapatan, aging piutang & ekspor CSV tersedia untuk paket BISNIS Rp59.000/bulan.
+                Laporan pendapatan, aging piutang & ekspor CSV tersedia untuk paket BISNIS {formatPrice(getPrice("BUSINESS", "MONTHLY"))}/bulan.
               </p>
             </div>
             <Button asChild size="sm" className="gap-1.5 text-xs shadow-xs">

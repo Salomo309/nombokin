@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { PDFPreview } from "@/components/invoices/PDFPreview";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatRupiah } from "@/lib/utils";
+import { getPrice, formatPrice } from "@/lib/pricing";
 
 interface Customer {
   id: string;
@@ -588,8 +589,8 @@ export function InvoiceForm({ type, initialData }: InvoiceFormProps) {
           <DialogHeader>
             <DialogTitle className="text-xl">Batas Limit Bulanan Tercapai</DialogTitle>
             <DialogDescription className="text-sm pt-2">
-              Akun free Anda dibatasi maksimal <strong>5 invoice per bulan</strong>. 
-              Upgrade ke paket <strong>PRO</strong> seharga Rp29.000/bulan untuk pembuatan invoice tanpa batas, custom logo branding, dan mengaktifkan pembayaran langsung lewat QRIS.
+              Akun free Anda dibatasi maksimal <strong>5 invoice per bulan</strong>.
+              Upgrade ke paket <strong>PRO</strong> seharga {formatPrice(getPrice("PRO", "MONTHLY"))}/bulan untuk pembuatan invoice tanpa batas, custom logo branding, dan mengaktifkan pembayaran langsung lewat QRIS.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
