@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthFromRequest } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { paymentMethodPatchSchema } from "@/lib/validators";
+import {
+  deletePaymentMethod,
+  updatePaymentMethod,
+} from "@/server/services/paymentMethodService";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -13,11 +16,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const { id } = await params;
 
   try {
-    const existing = await prisma.paymentMethod.findFirst({
-      where: { id, tenantId: auth.tenantId },
-    });
-    if (!existing) return NextResponse.json({ error: "Payment method not found" }, { status: 404 });
-
     const body = await request.json();
     const parsed = paymentMethodPatchSchema.safeParse(body);
     if (!parsed.success) {
@@ -27,18 +25,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       );
     }
 
-    const d = parsed.data;
-    const method = await prisma.paymentMethod.update({
-      where: { id },
-      data: {
-        ...(d.bankName !== undefined ? { bankName: d.bankName || null } : {}),
-        ...(d.accountNumber !== undefined ? { accountNumber: d.accountNumber || null } : {}),
-        ...(d.accountHolder !== undefined ? { accountHolder: d.accountHolder || null } : {}),
-        ...(d.qrisImageUrl !== undefined ? { qrisImageUrl: d.qrisImageUrl || null } : {}),
-        ...(d.isActive !== undefined ? { isActive: d.isActive } : {}),
-        ...(d.sortOrder !== undefined ? { sortOrder: d.sortOrder } : {}),
-      },
-    });
+    const method = await updatePaymentMethod(auth.tenantId, id, parsed.data);
+    if (!method) {
+      return NextResponse.json({ error: "Payment method not found" }, { status: 404 });
+    }
 
     return NextResponse.json(method);
   } catch (err) {
@@ -55,11 +45,8 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   const { id } = await params;
 
   try {
-    const deleted = await prisma.paymentMethod.deleteMany({
-      where: { id, tenantId: auth.tenantId },
-    });
-
-    if (deleted.count === 0) {
+    const ok = await deletePaymentMethod(auth.tenantId, id);
+    if (!ok) {
       return NextResponse.json({ error: "Payment method not found" }, { status: 404 });
     }
 

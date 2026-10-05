@@ -141,6 +141,7 @@ export const paymentMethodPatchSchema = z.object({
 });
 
 export type PaymentMethodInput = z.infer<typeof paymentMethodSchema>;
+export type PaymentMethodPatchInput = z.infer<typeof paymentMethodPatchSchema>;
 
 // ============================================================
 // TEAM (multi-user undangan)
