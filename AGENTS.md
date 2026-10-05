@@ -25,7 +25,10 @@ No separate BE/FE: UI in `src/app` + `src/components`; backend in `src/app/api/*
 - No `alert()`/`confirm()` — use toast (`src/components/ui/toast.tsx`) + confirm-dialog.
 - Product success/error messages in English; static UI text and `console.*` in Indonesian.
 - Next 16 uses `src/proxy.ts` for route guarding (not `middleware.ts`); route group `(app)` for authed pages.
-- **Every paid-tier feature MUST be enforced server-side, never UI-only.** Gating points live in: `src/server/services/invoiceService.ts` (quota), `payment-link` + `upload/logo` routes, `updateCompanyAction`, PDF template (`tier === "FREE"` → watermark).
+- **Every paid-tier feature MUST be enforced server-side, never UI-only.** Use `requireTier` / `requireRole` from `src/lib/guards.ts` (401/403 standar) — never hand-rolled tier checks. Gating points live in: `src/server/services/invoiceService.ts` (quota), `payment-link` + `upload/logo` routes, `updateCompanyAction`, PDF template (`tier === "FREE"` → watermark), `src/app/api/reports/*` (BUSINESS), `src/app/api/team/*` (OWNER + BUSINESS).
+- Service-layer rule: route = validasi ringan + gate + delegasi; aturan bisnis di `src/server/services/` (contoh pola: `reportService.ts`, `confirmMidtransOrder()` di `paymentService.ts`).
+- Pricing lives only in `src/lib/pricing.ts` — never hardcode amounts elsewhere.
+- Team rules: BISNIS flat max 5 members (`src/lib/team.ts`); invite link 7 hari sekali pakai tanpa email; billing mutations OWNER/ADMIN only; role changes apply after re-login (role is in JWT).
 - Commit style: `feat:` / `fix:` one concern per commit; split shared-file hunks instead of mixing.
 
 ## Key behaviors (don't break)
