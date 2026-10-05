@@ -47,6 +47,7 @@ No separate BE/FE: UI in `src/app` + `src/components`; backend in `src/app/api/*
 1. Tarball excluding `node_modules .next .git .env* uploads public/uploads .opencode`.
 2. Upload to app dir, extract, `npm run build`, `pm2 restart nombokin` (port 3000 behind nginx :80).
 3. Smoke test: `/login` → 200. Prisma CLI needs `DATABASE_URL` in `.env` (not `.env.local`).
+4. NEVER `npm prune --omit=dev` on VPS — build needs dev deps (`@tailwindcss/postcss`). If build fails weirdly after dependency changes: `npm install`, `rm -rf .next`, rebuild.
 
 ## Windows/PowerShell quirks
 
