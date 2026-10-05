@@ -316,10 +316,10 @@ export default function DashboardPage() {
               <CardContent className="space-y-4 text-xs text-muted-foreground leading-relaxed">
                 <div className="space-y-1">
                   <h4 className="font-serif font-bold text-foreground text-xs">
-                    1. Hubungkan Akun Midtrans
+                    1. Atur Pembayaran
                   </h4>
                   <p>
-                    Buka <strong>Pengaturan &gt; Pembayaran</strong> untuk memasukkan Server Key Midtrans Anda agar pembayaran QRIS aktif.
+                    Buka <strong>Pengaturan &gt; Pembayaran</strong> untuk mendaftarkan rekening bank & QRIS tokomu (transfer manual, semua paket). QRIS/VA otomatis Midtrans aktif untuk paket PRO ke atas.
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -332,10 +332,10 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-1">
                   <h4 className="font-serif font-bold text-foreground text-xs">
-                    3. Klien Melakukan Scan
+                    3. Terima Pembayaran
                   </h4>
                   <p>
-                    Klien Anda cukup membuka link public invoice, scan QRIS menggunakan GoPay/OVO/m-Banking, dan invoice otomatis LUNAS.
+                    Klien buka link publik dan bayar: via QRIS otomatis (status terverifikasi sendiri), atau transfer manual lalu konfirmasi — kamu verifikasi lewat mutasi dan tandai Lunas manual.
                   </p>
                 </div>
               </CardContent>
